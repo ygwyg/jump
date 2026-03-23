@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jump — Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=Tiny5&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+#noise-canvas{position:fixed;inset:0;z-index:999;pointer-events:none;opacity:.025;width:100%;height:100%;}
+
+:root{
+  --bg:#0f0f0f;--fg:#f0f0f0;
+  --dim:#888;--dim2:#555;
+  --border:#2a2a2a;--border2:#383838;
+  --fn-display:'Tiny5','JetBrains Mono',monospace;
+  --fn-body:'Inter',system-ui,sans-serif;
+  --fn-mono:'JetBrains Mono','Tiny5',monospace;
+}
+
+html,body{height:100%;overflow:hidden;}
+body{
+  font-family:var(--fn-display);
+  background:var(--bg);color:var(--fg);
+  -webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;
+}
+
+/* ── NAV — identical to landing.html ── */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:28px 48px;max-width:960px;margin:0 auto;width:100%;
+  flex-shrink:0;
+}
+nav a{
+  color:var(--dim);text-decoration:none;
+  font-size:14px;letter-spacing:.04em;transition:color .15s;
+}
+nav a:hover{color:var(--fg);}
+.nav-r{display:flex;gap:28px;align-items:center;}
+
+/* ── LAYOUT ── */
+.playground{
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  grid-template-rows:1fr;
+  min-height:0;
+  border-top:1px solid var(--border);
+}
+
+/* ── LEFT PANEL: TARGET ── */
+.panel-left{
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:relative;
+}
+.panel-label{
+  padding:16px 24px;
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+
+/* Target stage */
+.target-stage{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.target-box{
+  width:72px;height:72px;
+  border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:var(--dim);letter-spacing:.04em;
+  position:relative;
+}
+/* subtle grid lines in background */
+.target-stage::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size:40px 40px;
+  opacity:.35;pointer-events:none;
+}
+
+/* Current intent display */
+.current-intent{
+  position:absolute;bottom:20px;left:0;right:0;
+  text-align:center;
+  font-family:var(--fn-mono);font-size:13px;color:var(--dim);
+  pointer-events:none;letter-spacing:.02em;
+  transition:color .15s;
+}
+.current-intent.active{color:var(--fg);}
+
+/* Controls row */
+.target-controls{
+  padding:16px 24px;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;flex-shrink:0;
+}
+.ctrl-btn{
+  font-family:var(--fn-display);font-size:12px;
+  padding:7px 16px;border:1px solid var(--border);
+  color:var(--dim);background:none;cursor:pointer;
+  letter-spacing:.04em;transition:all .13s;
+}
+.ctrl-btn:hover{border-color:var(--border2);color:var(--fg);}
+.target-shape{
+  font-family:var(--fn-display);font-size:11px;color:var(--dim);
+  letter-spacing:.06em;margin-left:auto;
+  display:flex;gap:8px;align-items:center;
+}
+.shape-btn{
+  font-family:var(--fn-display);font-size:11px;
+  padding:5px 12px;border:1px solid var(--border);
+  color:var(--dim);background:none;cursor:pointer;
+  letter-spacing:.04em;transition:all .13s;
+  -webkit-appearance:none;appearance:none;
+}
+.shape-btn:hover{border-color:var(--border2);color:var(--dim);background:none;}
+.shape-btn.on{border-color:var(--fg);color:var(--bg);background:var(--fg);}
+
+/* Options row */
+.options-row{
+  padding:12px 24px;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:20px;flex-shrink:0;
+  font-size:11px;color:var(--dim);letter-spacing:.04em;
+}
+.opt{display:flex;align-items:center;gap:8px;}
+.opt-label{font-size:11px;color:var(--dim);}
+.opt select{
+  font-family:var(--fn-display);font-size:11px;
+  background:#111;border:1px solid var(--border);color:var(--dim);
+  padding:4px 8px;cursor:pointer;letter-spacing:.03em;
+  outline:none;
+}
+.opt select:hover{border-color:var(--border2);}
+.opt input[type=range]{
+  width:80px;accent-color:var(--dim);
+  height:1px;background:var(--border);-webkit-appearance:none;cursor:pointer;
+}
+.opt input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:10px;height:10px;
+  background:var(--border2);border-radius:50%;
+}
+.opt-val{font-size:11px;color:var(--dim);min-width:28px;}
+
+/* ── RIGHT PANEL: INTENTS + CODE ── */
+.panel-right{
+  display:flex;flex-direction:column;min-height:0;
+}
+
+/* Input bar — filter + generate modes */
+.input-bar{
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+/* Mode toggle row */
+.mode-row{
+  display:flex;border-bottom:1px solid var(--border);
+}
+.mode-btn{
+  flex:1;padding:10px 0;text-align:center;
+  font-family:var(--fn-display);font-size:11px;letter-spacing:.06em;
+  color:var(--dim);background:none;border:none;cursor:pointer;
+  transition:all .13s;
+  -webkit-appearance:none;appearance:none;
+}
+.mode-btn + .mode-btn{border-left:1px solid var(--border);}
+.mode-btn.active{color:var(--fg);background:none;}
+.mode-btn .star{margin-right:5px;font-style:normal;}
+
+/* Filter mode */
+.filter-wrap{
+  padding:14px 24px;
+  display:flex;align-items:center;gap:10px;
+}
+.filter-wrap.hidden{display:none;}
+
+/* Generate mode */
+.generate-wrap{
+  padding:14px 24px;
+  display:flex;align-items:center;gap:10px;
+}
+.generate-wrap.hidden{display:none;}
+.generate-status{
+  font-family:var(--fn-mono);font-size:10px;color:var(--dim);
+  letter-spacing:.06em;min-width:60px;text-align:right;flex-shrink:0;
+}
+
+/* Shared input styles */
+.bar-input{
+  flex:1;background:none;border:none;outline:none;
+  font-family:var(--fn-mono);font-size:13px;color:var(--dim);
+  letter-spacing:.02em;caret-color:var(--dim);
+}
+.bar-input::placeholder{color:var(--dim2);}
+.bar-clear{
+  font-family:var(--fn-display);font-size:11px;color:var(--dim);
+  cursor:pointer;padding:2px 6px;transition:color .13s;
+  visibility:hidden;-webkit-appearance:none;appearance:none;
+  background:none;border:none;
+}
+.bar-clear.visible{visibility:visible;}
+.bar-clear:hover{color:var(--dim);}
+
+/* Intent groups */
+.intent-scroll{
+  flex:1;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+}
+.intent-scroll::-webkit-scrollbar{width:4px;}
+.intent-scroll::-webkit-scrollbar-track{background:transparent;}
+.intent-scroll::-webkit-scrollbar-thumb{background:var(--border);}
+
+.intent-group{border-bottom:1px solid var(--border);}
+.intent-group-name{
+  padding:10px 24px;
+  font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim2);
+  position:sticky;top:0;background:var(--bg);z-index:1;
+  border-bottom:1px solid var(--border);
+}
+.intent-list{
+  display:flex;flex-wrap:wrap;gap:6px;
+  padding:14px 24px;
+}
+.intent-pill{
+  font-family:var(--fn-mono);font-size:12px;
+  padding:6px 14px;border:1px solid var(--border);
+  color:var(--dim);background:none;cursor:pointer;
+  transition:all .12s;letter-spacing:.02em;
+  white-space:nowrap;
+  -webkit-appearance:none;appearance:none;
+}
+.intent-pill:hover{border-color:var(--border2);color:var(--dim);background:none;}
+.intent-pill.active{border-color:var(--fg);color:var(--bg);background:var(--fg);}
+.intent-pill.hidden{display:none;}
+
+/* Code output */
+.code-out{
+  border-top:1px solid var(--border);
+  padding:16px 24px;flex-shrink:0;
+  font-family:var(--fn-mono);font-size:13px;line-height:1.7;
+  color:var(--dim);background:#080808;min-height:90px;
+}
+.code-out .fn{color:#6699cc;}.code-out .st{color:#5aaa72;}
+.code-out .kw{color:#9f7dce;}.code-out .nu{color:#b07840;}
+.code-out .cm{color:#444454;font-style:normal;}
+</style>
+</head>
+<body>
+
+<canvas id="noise-canvas" aria-hidden="true"></canvas>
+
+<nav>
+  <a href="landing.html" style="font-size:15px;letter-spacing:.06em;color:var(--fg);text-decoration:none;">JUMP</a>
+  <div class="nav-r">
+    <a href="showcase.html">showcase</a>
+    <a href="playground.html">playground</a>
+    <a href="https://github.com/ygwyg/jump">github →</a>
+  </div>
+</nav>
+
+<div class="playground">
+
+  <!-- LEFT: animated target -->
+  <div class="panel-left">
+    <div class="panel-label">target</div>
+    <div class="target-stage" id="target-stage">
+      <div class="target-box" id="target-box"></div>
+      <div class="current-intent" id="current-intent">select an intent →</div>
+    </div>
+    <div class="target-controls">
+      <button class="ctrl-btn" id="btn-replay">replay</button>
+      <button class="ctrl-btn" id="btn-reset">reset</button>
+      <div class="target-shape">
+        <span>shape</span>
+        <button class="shape-btn on" data-shape="square">□</button>
+        <button class="shape-btn" data-shape="circle">○</button>
+        <button class="shape-btn" data-shape="pill">⬭</button>
+        <button class="shape-btn" data-shape="text">T</button>
+      </div>
+    </div>
+    <div class="options-row">
+      <div class="opt">
+        <span class="opt-label">spring</span>
+        <select id="spring-select">
+          <option value="default">default</option>
+          <option value="bouncy">bouncy</option>
+          <option value="gentle">gentle</option>
+          <option value="stiff">stiff</option>
+          <option value="wobbly">wobbly</option>
+        </select>
+      </div>
+      <div class="opt">
+        <span class="opt-label">duration</span>
+        <input type="range" id="dur-range" min="100" max="1200" value="500">
+        <span class="opt-val" id="dur-val">500ms</span>
+      </div>
+      <div class="opt">
+        <span class="opt-label">distance</span>
+        <input type="range" id="dist-range" min="4" max="60" value="20">
+        <span class="opt-val" id="dist-val">20px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: intent picker + code -->
+  <div class="panel-right">
+    <div class="panel-label">intents <span style="color:var(--dim2);font-size:10px;letter-spacing:.06em;margin-left:8px;" id="intent-count"></span></div>
+
+    <div class="input-bar">
+      <div class="mode-row">
+        <button class="mode-btn active" id="mode-filter">filter</button>
+        <button class="mode-btn" id="mode-generate"><em class="star">✦</em> generate</button>
+      </div>
+      <div class="filter-wrap" id="filter-wrap">
+        <input class="bar-input" id="search" type="text" placeholder="type to filter…" autocomplete="off" spellcheck="false">
+        <button class="bar-clear" id="search-clear">clear</button>
+      </div>
+      <div class="generate-wrap hidden" id="generate-wrap">
+        <input class="bar-input" id="gen-input" type="text" placeholder="describe an animation…" autocomplete="off" spellcheck="false">
+        <span class="generate-status" id="gen-status"></span>
+      </div>
+    </div>
+
+    <div class="intent-scroll" id="intent-scroll"></div>
+    <div class="code-out" id="code-out"><span class="cm">// click an intent to animate</span></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const canvas=document.getElementById('noise-canvas');
+  if(!canvas)return;
+  function gen(){
+    canvas.width=innerWidth;canvas.height=innerHeight;
+    const ctx=canvas.getContext('2d');
+    const img=ctx.createImageData(canvas.width,canvas.height);
+    const d=img.data;
+    let s=0xdeadbeef;
+    const r=()=>{s^=s<<13;s^=s>>17;s^=s<<5;return(s>>>0)/0xffffffff;};
+    for(let i=0;i<d.length;i+=4){
+      const v=r();if(v<0.18){const b=(v/0.18*255)|0;d[i]=d[i+1]=d[i+2]=b;d[i+3]=255;}
+    }
+    ctx.putImageData(img,0,0);
+  }
+  gen();let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(gen,200);});
+})();
+</script>
+
+<script type="module">
+// ── Spring physics ───────────────────────────────────────────────
+function sPos(t,w,z,v0){if(z<1){const d=w*Math.sqrt(1-z*z),B=(z*w+v0)/d;return 1-Math.exp(-z*w*t)*(Math.cos(d*t)+B*Math.sin(d*t))}if(z===1)return 1-Math.exp(-w*t)*(1+(w+v0)*t);const r1=-w*(z-Math.sqrt(z*z-1)),r2=-w*(z+Math.sqrt(z*z-1)),c2=(r1+v0)/(r1-r2);return 1-((1-c2)*Math.exp(r1*t)+c2*Math.exp(r2*t))}
+function fS(w,z,v0){let hi=.5;while(Math.abs(sPos(hi,w,z,v0)-1)>.0001){hi*=2;if(hi>60)return 10}let lo=0;for(let i=0;i<48;i++){const m=(lo+hi)/2;Math.abs(sPos(m,w,z,v0)-1)>.0001?lo=m:hi=m}return hi}
+function sdist(px,py,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,l=dx*dx+dy*dy;if(!l)return Math.hypot(px-x1,py-y1);const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l));return Math.hypot(px-(x1+t*dx),py-(y1+t*dy))}
+function rdp(pts,s,e,eps,k){if(e-s<=1)return;let mx=0,mi=s;const[x1,y1]=pts[s],[x2,y2]=pts[e];for(let i=s+1;i<e;i++){const d=sdist(...pts[i],x1,y1,x2,y2);if(d>mx){mx=d;mi=i}}if(mx>eps){k[mi]=1;rdp(pts,s,mi,eps,k);rdp(pts,mi,e,eps,k)}}
+function mkSp({stiffness:s=170,damping:d=26,mass:m=1}={}){
+  if(s<=0||m<=0)return{easing:'ease-out',duration:300};
+  const w=Math.sqrt(s/m),z=d/(2*Math.sqrt(s*m));
+  const dur=fS(w,z,0),N=Math.min(Math.max(120,Math.ceil(w*dur/Math.PI*12)),400);
+  const sa=Array.from({length:N+1},(_,i)=>Math.max(-3,Math.min(3,sPos(i/N*dur,w,z,0))));
+  const pts=sa.map((v,i)=>[i/N,v]);const k=new Uint8Array(N+1);k[0]=k[N]=1;rdp(pts,0,N,.0004,k);
+  return{easing:`linear(${sa.map((v,i)=>{if(!k[i])return null;const p=Math.round(i/N*1000)/10,vv=Math.round(v*1e5)/1e5;return i===0||i===N?`${vv}`:`${vv} ${p}%`}).filter(Boolean).join(',')})`,duration:Math.round(dur*1e3)};
+}
+const SPRINGS={
+  default:{stiffness:170,damping:26},
+  bouncy: {stiffness:300,damping:20},
+  gentle: {stiffness:120,damping:14},
+  stiff:  {stiffness:500,damping:40},
+  wobbly: {stiffness:180,damping:8},
+};
+
+// ── WAAPI ────────────────────────────────────────────────────────
+function cc(el){el.getAnimations().filter(a=>a.__j).forEach(a=>{try{a.commitStyles()}catch{};a.cancel()})}
+function wa(el,kfs,opt){cc(el);const a=el.animate(kfs,{fill:'forwards',...opt});a.__j=true;a.finished.then(()=>{try{a.commitStyles()}catch{};a.cancel()}).catch(()=>{});return a;}
+function tf(fs){return fs.map(f=>{const r={},t=[];
+  if(f.x!=null)t.push(`translateX(${f.x}px)`);
+  if(f.y!=null)t.push(`translateY(${f.y}px)`);
+  if(f.s!=null)t.push(`scale(${f.s})`);
+  if(f.r!=null)t.push(`rotate(${f.r}deg)`);
+  if(f.sx!=null)t.push(`scaleX(${f.sx})`);
+  if(f.sy!=null)t.push(`scaleY(${f.sy})`);
+  if(f.ry!=null)t.push(`perspective(800px) rotateY(${f.ry}deg)`);
+  if(f.rx!=null)t.push(`perspective(800px) rotateX(${f.rx}deg)`);
+  if(t.length)r.transform=t.join(' ');
+  if(f.o!=null)r.opacity=f.o;if(f.at!=null)r.offset=f.at;return r})}
+
+// ── ALL INTENTS ──────────────────────────────────────────────────
+const INTENT_GROUPS = [
+  {
+    name: 'entrances',
+    intents: [
+      'fade in',
+      'enter',
+      'enter from top',
+      'enter from bottom',
+      'enter from left',
+      'enter from right',
+      'slide up',
+      'slide down',
+      'slide left',
+      'slide right',
+      'grow',
+    ],
+  },
+  {
+    name: 'exits',
+    intents: [
+      'fade out',
+      'exit',
+      'exit top',
+      'exit bottom',
+      'exit left',
+      'exit right',
+      'shrink',
+    ],
+  },
+  {
+    name: 'emphasis',
+    intents: [
+      'bounce',
+      'shake',
+      'wiggle',
+      'pop',
+      'emphasize',
+      'pulse',
+      'spin',
+      'flip y',
+      'flip x',
+      'rotate',
+      'wobble',
+      'jello',
+      'tada',
+      'heartbeat',
+      'flash',
+      'rubberband',
+    ],
+  },
+  {
+    name: 'scale',
+    intents: [
+      'scale up',
+      'scale down',
+    ],
+  },
+  {
+    name: 'compound',
+    intents: [
+      'fade in slide up',
+      'fade in enter from bottom',
+      'fade in enter from left',
+      'fade in enter from right',
+      'fade out exit bottom',
+      'fade out exit right',
+    ],
+  },
+];
+
+// ── Intent resolvers ─────────────────────────────────────────────
+function resolveIntent(intent, opts) {
+  const d = opts.distance ?? 20;
+  const MAP = {
+    'fade in':             ()=>({k:[{opacity:0},{opacity:1}],e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'fade out':            ()=>({k:[{opacity:1},{opacity:0}],e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'enter':               ()=>({k:tf([{s:.95,o:0},{s:1,o:1}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'enter from top':      ()=>({k:tf([{y:-d,o:0},{y:0,o:1}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'enter from bottom':   ()=>({k:tf([{y:d,o:0},{y:0,o:1}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'enter from left':     ()=>({k:tf([{x:-d,o:0},{x:0,o:1}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'enter from right':    ()=>({k:tf([{x:d,o:0},{x:0,o:1}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'slide up':            ()=>({k:tf([{y:d},{y:0}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'slide down':          ()=>({k:tf([{y:-d},{y:0}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'slide left':          ()=>({k:tf([{x:d},{x:0}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'slide right':         ()=>({k:tf([{x:-d},{x:0}]),e:'cubic-bezier(0.215,0.61,0.355,1)'}),
+    'grow':                ()=>({k:tf([{s:.04,o:0},{s:1,o:1}]),e:'cubic-bezier(0.2,1.2,0.4,1)'}),
+    'exit':                ()=>({k:tf([{s:1,o:1},{s:.95,o:0}]),e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'exit top':            ()=>({k:tf([{y:0,o:1},{y:-d,o:0}]),e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'exit bottom':         ()=>({k:tf([{y:0,o:1},{y:d,o:0}]),e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'exit left':           ()=>({k:tf([{x:0,o:1},{x:-d,o:0}]),e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'exit right':          ()=>({k:tf([{x:0,o:1},{x:d,o:0}]),e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'shrink':              ()=>({k:tf([{s:1,o:1},{s:.04,o:0}]),e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'scale up':            ()=>({k:tf([{s:1},{s:1.3}]),e:'cubic-bezier(0.2,1.2,0.4,1)'}),
+    'scale down':          ()=>({k:tf([{s:1},{s:.7}]),e:'cubic-bezier(0.55,0.055,0.675,0.19)'}),
+    'bounce':              ()=>({k:tf([{},{y:-24,at:.3},{y:0,at:.5},{y:-10,at:.68},{y:0}]),e:'cubic-bezier(0.2,1.2,0.4,1)'}),
+    'shake':               ()=>({k:tf([{x:0},{x:-12,at:.15},{x:12,at:.3},{x:-8,at:.45},{x:8,at:.6},{x:-4,at:.78},{x:0}]),e:'ease-in-out'}),
+    'wiggle':              ()=>({k:tf([{r:0},{r:-10,at:.2},{r:10,at:.4},{r:-7,at:.6},{r:7,at:.8},{r:0}]),e:'ease-in-out'}),
+    'pop':                 ()=>({k:tf([{s:1},{s:1.28,at:.38},{s:.88,at:.68},{s:1}]),e:'cubic-bezier(0.2,1.2,0.4,1)'}),
+    'emphasize':           ()=>({k:tf([{s:1},{s:1.18,at:.5},{s:1}]),e:'cubic-bezier(0.2,1.2,0.4,1)'}),
+    'pulse':               ()=>({k:[{opacity:1},{opacity:.05,offset:.5},{opacity:1}],e:'ease-in-out'}),
+    'spin':                ()=>({k:tf([{r:0},{r:360}]),e:'cubic-bezier(.4,0,.2,1)'}),
+    'flip y':              ()=>({k:[{transform:'perspective(800px) rotateY(0)'},{transform:'perspective(800px) rotateY(360deg)'}],e:'ease-in-out'}),
+    'flip x':              ()=>({k:[{transform:'perspective(800px) rotateX(0)'},{transform:'perspective(800px) rotateX(360deg)'}],e:'ease-in-out'}),
+    'rotate':              ()=>({k:tf([{r:0},{r:360}]),e:'ease-in-out'}),
+    'wobble':              ()=>({k:tf([{s:1},{s:1.1,at:.15},{s:.92,at:.3},{s:1.06,at:.5},{s:.97,at:.7},{s:1}]),e:'ease-in-out'}),
+    'jello':               ()=>({k:tf([{sx:1,sy:1},{sx:1.4,sy:.6,at:.14},{sx:.76,sy:1.24,at:.28},{sx:1.14,sy:.86,at:.42},{sx:.94,sy:1.06,at:.58},{sx:1.03,sy:.97,at:.74},{sx:1,sy:1}]),e:'ease-in-out'}),
+    'tada':                ()=>({k:tf([{s:1,r:0},{s:.9,r:-3,at:.1},{s:1.14,r:3,at:.28},{s:1.14,r:-3,at:.44},{s:1.14,r:3,at:.58},{s:1.14,r:-3,at:.72},{s:1,r:0}]),e:'ease-in-out'}),
+    'heartbeat':           ()=>({k:tf([{s:1},{s:1.26,at:.14},{s:1,at:.28},{s:1.26,at:.42},{s:1}]),e:'ease-in-out'}),
+    'flash':               ()=>({k:[{opacity:1},{opacity:0,offset:.25},{opacity:1,offset:.5},{opacity:0,offset:.75},{opacity:1}],e:'linear'}),
+    'rubberband':          ()=>({k:tf([{sx:1,sy:1},{sx:1.48,sy:.52,at:.26},{sx:.78,sy:1.22,at:.46},{sx:1.1,sy:.9,at:.62},{sx:.97,sy:1.03,at:.78},{sx:1,sy:1}]),e:'cubic-bezier(0.2,1.2,0.4,1)'}),
+  };
+
+  // Try exact match
+  if (MAP[intent]) return MAP[intent]();
+
+  // Compound: try to merge two intents
+  const sorted = Object.keys(MAP).sort((a,b)=>b.length-a.length);
+  const parts = []; let rem = intent.trim();
+  while (rem.length) {
+    let hit = false;
+    for (const k of sorted) {
+      if (rem.startsWith(k) && (rem[k.length]===' '||!rem[k.length])) {
+        parts.push(k); rem=rem.slice(k.length).trim(); hit=true; break;
+      }
+    }
+    if (!hit) { const s=rem.indexOf(' '); if(s<0)break; rem=rem.slice(s+1).trim(); }
+  }
+  if (!parts.length) return null;
+  if (parts.length === 1) return MAP[parts[0]]();
+  const from={},to={};
+  for (const p of parts) {
+    const r=MAP[p]();
+    if(r.k.length===2){Object.assign(from,r.k[0]);Object.assign(to,r.k[1]);}
+    else return r;
+  }
+  return {k:[from,to], e:'cubic-bezier(0.215,0.61,0.355,1)'};
+}
+
+// ── STATE ─────────────────────────────────────────────────────────
+const box = document.getElementById('target-box');
+const currentIntentEl = document.getElementById('current-intent');
+const codeOut = document.getElementById('code-out');
+let activeIntent = null;
+let activeShape = 'square';
+
+function getOpts() {
+  const springName = document.getElementById('spring-select').value;
+  const sp = mkSp(SPRINGS[springName]);
+  return {
+    duration: Number(document.getElementById('dur-range').value),
+    easing: sp.easing,
+    distance: Number(document.getElementById('dist-range').value),
+    springName,
+    springDur: sp.duration,
+  };
+}
+
+function applyShape(shape) {
+  activeShape = shape;
+  box.style.width = '';box.style.height = '';
+  box.style.borderRadius = '';box.style.fontSize='';
+  box.style.fontFamily='';box.textContent='';
+  box.style.border = '1px solid var(--fg)';
+  if (shape === 'square')  { box.style.width='72px';box.style.height='72px'; }
+  if (shape === 'circle')  { box.style.width='72px';box.style.height='72px';box.style.borderRadius='50%'; }
+  if (shape === 'pill')    { box.style.width='140px';box.style.height='40px';box.style.borderRadius='100px'; }
+  if (shape === 'text')    { box.style.border='none';box.style.fontSize='22px';box.style.fontFamily='var(--fn-body)';box.style.fontWeight='700';box.textContent='Hello.'; }
+  // Reset transform/opacity after shape change
+  cc(box); box.style.opacity='1'; box.style.transform='none';
+}
+
+function playIntent(intent) {
+  if (!intent) return;
+  const opts = getOpts();
+  const resolved = resolveIntent(intent, opts);
+  if (!resolved) return;
+
+  // Reset box to visible neutral state before playing
+  cc(box);
+  box.style.opacity = '1';
+  box.style.transform = 'none';
+
+  wa(box, resolved.k, {duration: opts.duration, easing: opts.easing});
+
+  currentIntentEl.textContent = `"${intent}"`;
+  currentIntentEl.classList.add('active');
+
+  // Update code output
+  const sp = document.getElementById('spring-select').value;
+  const dur = opts.duration;
+  const dist = opts.distance;
+  const isDefault = sp === 'default' && dur === 500 && dist === 20;
+  if (isDefault) {
+    codeOut.innerHTML = `<span class="fn">jump</span>(el, <span class="st">"${intent}"</span>)`;
+  } else {
+    let extras = [];
+    if (sp !== 'default') extras.push(`...springs.<span class="fn">${sp}</span>`);
+    else extras.push(`duration: <span class="nu">${dur}</span>`);
+    if (dist !== 20) extras.push(`distance: <span class="nu">${dist}</span>`);
+    codeOut.innerHTML = `<span class="fn">jump</span>(el, <span class="st">"${intent}"</span>, {\n  ${extras.join(',\n  ')}\n})`;
+  }
+}
+
+function setActive(intent, pill) {
+  document.querySelectorAll('.intent-pill').forEach(p=>p.classList.remove('active'));
+  if (pill) pill.classList.add('active');
+  activeIntent = intent;
+  playIntent(intent);
+}
+
+// ── BUILD INTENT LIST ─────────────────────────────────────────────
+const scroll = document.getElementById('intent-scroll');
+const allPills = [];
+
+INTENT_GROUPS.forEach(group => {
+  const groupEl = document.createElement('div');
+  groupEl.className = 'intent-group';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'intent-group-name';
+  nameEl.textContent = group.name;
+  groupEl.appendChild(nameEl);
+
+  const listEl = document.createElement('div');
+  listEl.className = 'intent-list';
+  listEl.dataset.group = group.name;
+
+  group.intents.forEach(intent => {
+    const pill = document.createElement('button');
+    pill.className = 'intent-pill';
+    pill.textContent = intent;
+    pill.dataset.intent = intent;
+    pill.addEventListener('click', () => setActive(intent, pill));
+    listEl.appendChild(pill);
+    allPills.push(pill);
+  });
+
+  groupEl.appendChild(listEl);
+  scroll.appendChild(groupEl);
+});
+
+// Count
+document.getElementById('intent-count').textContent =
+  `${allPills.length} intents`;
+
+// ── MODE TOGGLE ───────────────────────────────────────────────────
+const modeFilter   = document.getElementById('mode-filter');
+const modeGenerate = document.getElementById('mode-generate');
+const filterWrap   = document.getElementById('filter-wrap');
+const generateWrap = document.getElementById('generate-wrap');
+
+modeFilter.addEventListener('click', () => {
+  modeFilter.classList.add('active');
+  modeGenerate.classList.remove('active');
+  filterWrap.classList.remove('hidden');
+  generateWrap.classList.add('hidden');
+  document.getElementById('search').focus();
+});
+
+modeGenerate.addEventListener('click', () => {
+  modeGenerate.classList.add('active');
+  modeFilter.classList.remove('active');
+  generateWrap.classList.remove('hidden');
+  filterWrap.classList.add('hidden');
+  document.getElementById('gen-input').focus();
+});
+
+// ── FILTER ────────────────────────────────────────────────────────
+const searchInput = document.getElementById('search');
+const searchClear = document.getElementById('search-clear');
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  searchClear.classList.toggle('visible', q.length > 0);
+
+  let visibleCount = 0;
+  allPills.forEach(pill => {
+    const match = !q || pill.dataset.intent.includes(q);
+    pill.classList.toggle('hidden', !match);
+    if (match) visibleCount++;
+  });
+
+  document.querySelectorAll('.intent-group').forEach(g => {
+    const hasVisible = [...g.querySelectorAll('.intent-pill:not(.hidden)')].length > 0;
+    g.style.display = hasVisible ? '' : 'none';
+  });
+
+  document.getElementById('intent-count').textContent =
+    q ? `${visibleCount} of ${allPills.length}` : `${allPills.length} intents`;
+});
+
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const first = allPills.find(p => !p.classList.contains('hidden'));
+    if (first) { first.click(); searchInput.blur(); }
+  }
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchInput.dispatchEvent(new Event('input'));
+  searchInput.focus();
+});
+
+// ── GENERATE ──────────────────────────────────────────────────────
+// Natural language → keyframes. Pattern-matches descriptive words
+// to animation properties. Works offline, no API needed.
+const genInput  = document.getElementById('gen-input');
+const genStatus = document.getElementById('gen-status');
+
+function interpretPrompt(prompt) {
+  const p = prompt.toLowerCase();
+
+  // ── Helpers ──
+  const has = (...words) => words.some(w => p.includes(w));
+  const num = (words, def) => {
+    for (const [w, v] of words) { if (p.includes(w)) return v; }
+    return def;
+  };
+
+  // ── Speed ──
+  const duration = num([
+    ['instant',40],['snappy',120],['very fast',150],['fast',200],
+    ['quick',220],['slow',800],['very slow',1200],['sluggish',1000],
+    ['dramatic',900],['lazy',750],
+  ], 480);
+
+  // ── Spring character ──
+  const spCfg =
+    has('bouncy','springy','elastic','wobbly','rubber')   ? {stiffness:260,damping:12} :
+    has('stiff','crisp','snappy','instant','rigid')        ? {stiffness:520,damping:42} :
+    has('gentle','soft','smooth','easy','float')           ? {stiffness:100,damping:18} :
+    has('heavy','sluggish','weighty','drag','slow')        ? {stiffness:80, damping:20,mass:2.5} :
+    has('jelly','gelatinous','gooey','blob')               ? {stiffness:140,damping:6}  :
+                                                             {stiffness:220,damping:26};
+  const {easing} = mkSp(spCfg);
+
+  // ── Direction / origin ──
+  const dist = num([['far','big','huge','large','dramatic'],[60]],20);
+
+  // ── Build keyframes based on descriptive intent ──
+  // Shake / vibration
+  if (has('shake','vibrat','tremble','quiver','jitter','nervous'))
+    return {k:tf([{x:0},{x:-14,at:.12},{x:14,at:.25},{x:-10,at:.38},{x:10,at:.5},{x:-6,at:.65},{x:6,at:.8},{x:0}]),easing,duration};
+
+  // Wiggle / wave
+  if (has('wiggle','sway','wave','wag','wobble','tilt'))
+    return {k:tf([{r:0},{r:-12,at:.2},{r:12,at:.4},{r:-8,at:.6},{r:8,at:.8},{r:0}]),easing,duration};
+
+  // Spin / rotate
+  if (has('spin','rotat','turn','twirl','whirl','360'))
+    return {k:tf([{r:0},{r: has('counter','left','ccw') ? -360 : 360}]),easing,duration};
+
+  // Flip
+  if (has('flip') && has('horizontal','side','left','right','y'))
+    return {k:[{transform:'perspective(800px) rotateY(0)'},{transform:'perspective(800px) rotateY(360deg)'}],easing,duration};
+  if (has('flip'))
+    return {k:[{transform:'perspective(800px) rotateX(0)'},{transform:'perspective(800px) rotateX(360deg)'}],easing,duration};
+
+  // Bounce / jump
+  if (has('bounce','jump','hop','spring up','boing'))
+    return {k:tf([{},{y:-dist*1.2,at:.3},{y:0,at:.5},{y:-dist*.5,at:.68},{y:0}]),easing,duration};
+
+  // Pulse / throb / heartbeat
+  if (has('pulse','throb','heartbeat','beat','pulsate'))
+    return {k:tf([{s:1},{s:1.28,at:.14},{s:1,at:.28},{s:1.28,at:.42},{s:1}]),easing,duration};
+
+  // Flash / blink
+  if (has('flash','blink','flicker','strobe'))
+    return {k:[{opacity:1},{opacity:0,offset:.2},{opacity:1,offset:.4},{opacity:0,offset:.6},{opacity:1,offset:.8},{opacity:1}],easing:'linear',duration};
+
+  // Pop / burst / explode
+  if (has('pop','burst','explode','punch','impact','snap'))
+    return {k:tf([{s:1},{s:1.4,at:.3},{s:.88,at:.6},{s:1}]),easing,duration};
+
+  // Rubber band / elastic snap
+  if (has('rubber','elastic','snap back','stretch'))
+    return {k:tf([{sx:1,sy:1},{sx:1.5,sy:.55,at:.25},{sx:.78,sy:1.28,at:.45},{sx:1.1,sy:.92,at:.62},{sx:.97,sy:1.04,at:.78},{sx:1,sy:1}]),easing,duration};
+
+  // Shrink / disappear / vanish / exit
+  if (has('shrink','disappear','vanish','exit','hide','gone','bye','leave'))
+    return {k:tf([{s:1,o:1},{s:.04,o:0}]),easing,duration};
+
+  // Grow / appear / enter / show
+  if (has('grow','appear','show','arrive','enter','materialize','expand'))
+    return {k:tf([{s:.04,o:0},{s:1,o:1}]),easing,duration};
+
+  // Float / hover / levitate
+  if (has('float','hover','levitat','drift','rise'))
+    return {k:tf([{y:0},{y:-dist*.8,at:.5},{y:0}]),easing,duration};
+
+  // Slide directions
+  if (has('slide up','rise','ascend','lift')) return {k:tf([{y:dist,o:0},{y:0,o:1}]),easing,duration};
+  if (has('slide down','fall','drop','descend','sink')) return {k:tf([{y:-dist,o:0},{y:0,o:1}]),easing,duration};
+  if (has('slide left','come from right','right to left')) return {k:tf([{x:dist,o:0},{x:0,o:1}]),easing,duration};
+  if (has('slide right','come from left','left to right')) return {k:tf([{x:-dist,o:0},{x:0,o:1}]),easing,duration};
+
+  // Fade in/out
+  if (has('fade in','appear','materialize','ghost in')) return {k:[{opacity:0},{opacity:1}],easing,duration};
+  if (has('fade out','disappear','ghost out','dissolve')) return {k:[{opacity:1},{opacity:0}],easing,duration};
+  if (has('fade','fad')) return {k:[{opacity:1},{opacity:0.1,offset:.5},{opacity:1}],easing,duration};
+
+  // Scale up / down
+  if (has('scale up','enlarge','bigger','grow large','zoom in'))  return {k:tf([{s:1},{s:1.35}]),easing,duration};
+  if (has('scale down','smaller','shrink','zoom out','reduce'))   return {k:tf([{s:1},{s:.65}]),easing,duration};
+
+  // Tada / attention / celebration
+  if (has('tada','attention','celebrate','fanfare','party'))
+    return {k:tf([{s:1,r:0},{s:.9,r:-3,at:.1},{s:1.15,r:3,at:.28},{s:1.15,r:-3,at:.44},{s:1.15,r:3,at:.58},{s:1.15,r:-3,at:.72},{s:1,r:0}]),easing,duration};
+
+  // Emphasize / highlight / draw attention
+  if (has('emphasize','highlight','focus','draw attention','notice','look at'))
+    return {k:tf([{s:1},{s:1.2,at:.5},{s:1}]),easing,duration};
+
+  // Jello / gelatinous
+  if (has('jello','gelatin','jelly','squish','squash'))
+    return {k:tf([{sx:1,sy:1},{sx:1.4,sy:.6,at:.14},{sx:.76,sy:1.24,at:.28},{sx:1.14,sy:.86,at:.42},{sx:.94,sy:1.06,at:.58},{sx:1.03,sy:.97,at:.74},{sx:1,sy:1}]),easing,duration};
+
+  // Swing / pendulum
+  if (has('swing','pendulum','hang','door'))
+    return {k:[{transform:'rotate(0deg)',transformOrigin:'top center'},{transform:'rotate(18deg)',transformOrigin:'top center',offset:.2},{transform:'rotate(-12deg)',transformOrigin:'top center',offset:.4},{transform:'rotate(8deg)',transformOrigin:'top center',offset:.6},{transform:'rotate(-4deg)',transformOrigin:'top center',offset:.8},{transform:'rotate(0deg)',transformOrigin:'top center'}],easing,duration};
+
+  // Drunk / random / chaotic / erratic
+  if (has('drunk','random','chaos','erratic','wild','crazy','glitch')) {
+    const rand = (n) => (Math.random()-0.5)*n;
+    return {k:tf([{x:0,y:0,r:0},{x:rand(20),y:rand(16),r:rand(12),at:.2},{x:rand(20),y:rand(16),r:rand(12),at:.4},{x:rand(20),y:rand(16),r:rand(12),at:.6},{x:rand(20),y:rand(16),r:rand(12),at:.8},{x:0,y:0,r:0}]),easing,duration};
+  }
+
+  // Heartbeat / alive
+  if (has('alive','heartbeat','living','breathe','breathing'))
+    return {k:tf([{s:1},{s:1.08,at:.15},{s:1,at:.3},{s:1.05,at:.45},{s:1}]),easing:'ease-in-out',duration};
+
+  // Ripple / splash
+  if (has('ripple','splash','impact','hit','slam'))
+    return {k:tf([{s:.8,o:.6},{s:1.3,o:.8,at:.3},{s:1,o:1}]),easing,duration};
+
+  // Default: a confident pop-in
+  return {k:tf([{s:.75,o:0},{s:1.08,o:1,at:.65},{s:1,o:1}]),easing,duration};
+}
+
+function runGenerate(prompt) {
+  if (!prompt.trim()) return;
+
+  genStatus.textContent = '✦';
+  genInput.disabled = true;
+
+  // Brief fake "thinking" delay for the feel of it
+  const thinkTime = 300 + Math.random() * 200;
+
+  setTimeout(() => {
+    const result = interpretPrompt(prompt);
+    const opts = getOpts();
+
+    // Reset and animate
+    cc(box);
+    box.style.opacity = '1';
+    box.style.transform = 'none';
+
+    wa(box, result.k, {
+      duration: result.duration ?? opts.duration,
+      easing: result.easing,
+    });
+
+    // Clear active pill selection since this is custom
+    document.querySelectorAll('.intent-pill').forEach(p => p.classList.remove('active'));
+    activeIntent = null;
+
+    currentIntentEl.textContent = `"${prompt}"`;
+    currentIntentEl.classList.add('active');
+
+    // Show generated keyframes in code output
+    const kfStr = JSON.stringify(result.k, null, 2)
+      .replace(/"([^"]+)":/g, '$1:')
+      .replace(/"/g, "'");
+    codeOut.innerHTML =
+      `<span class="cm">// ✦ generated from: "${prompt}"</span>\n` +
+      `<span class="fn">jump</span>(el, <span class="st">${kfStr}</span>, {\n` +
+      `  duration: <span class="nu">${result.duration ?? opts.duration}</span>\n` +
+      `})`;
+
+    genStatus.textContent = '→';
+    genInput.disabled = false;
+    genInput.select();
+  }, thinkTime);
+}
+
+genInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && genInput.value.trim()) {
+    runGenerate(genInput.value.trim());
+  }
+});
+
+genInput.addEventListener('input', () => {
+  genStatus.textContent = genInput.value.trim() ? '↵' : '';
+});
+
+// ── CONTROLS ──────────────────────────────────────────────────────
+document.getElementById('btn-replay').addEventListener('click', () => {
+  if (activeIntent) playIntent(activeIntent);
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  cc(box); box.style.opacity='1'; box.style.transform='none';
+  document.querySelectorAll('.intent-pill').forEach(p=>p.classList.remove('active'));
+  activeIntent = null;
+  currentIntentEl.textContent = 'select an intent →';
+  currentIntentEl.classList.remove('active');
+  codeOut.innerHTML = '<span class="cm">// click an intent to animate</span>';
+});
+
+document.querySelectorAll('.shape-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.shape-btn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    applyShape(btn.dataset.shape);
+  });
+});
+
+const durRange = document.getElementById('dur-range');
+const distRange = document.getElementById('dist-range');
+const durVal = document.getElementById('dur-val');
+const distVal = document.getElementById('dist-val');
+
+durRange.addEventListener('input', () => { durVal.textContent = durRange.value + 'ms'; });
+distRange.addEventListener('input', () => { distVal.textContent = distRange.value + 'px'; });
+
+// ── KEYBOARD SHORTCUTS ────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.target === searchInput || e.target === genInput) return;
+  if (e.key === 'r' || e.key === 'R') {
+    if (activeIntent) playIntent(activeIntent);
+  }
+  if (e.key === '/') {
+    e.preventDefault();
+    const isGenerateMode = !generateWrap.classList.contains('hidden');
+    if (isGenerateMode) genInput.focus();
+    else searchInput.focus();
+  }
+  if (e.key === 'Escape') {
+    searchInput.blur();
+    genInput.blur();
+  }
+});
+
+// ── INITIAL STATE ─────────────────────────────────────────────────
+applyShape('square');
+// Auto-play first intent after a brief delay
+setTimeout(() => {
+  const first = allPills[0];
+  if (first) first.click();
+}, 400);
+</script>
+</body>
+</html>

@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jump — Showcase</title>
+<link href="https://fonts.googleapis.com/css2?family=Tiny5&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── NOISE ── */
+#noise-canvas{position:fixed;inset:0;z-index:999;pointer-events:none;opacity:.025;width:100%;height:100%;}
+
+:root{
+  --bg:#0f0f0f;
+  --fg:#f0f0f0;
+  --dim:#888;
+  --dim2:#555;
+  --border:#2a2a2a;
+  --border2:#383838;
+  --fn-display:'Tiny5','JetBrains Mono',monospace;
+  --fn-body:'Inter',system-ui,sans-serif;
+  --fn-mono:'JetBrains Mono','Tiny5',monospace;
+}
+
+html{scroll-behavior:smooth;}
+body{
+  font-family:var(--fn-display);
+  background:var(--bg);color:var(--fg);
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* ── NAV — identical to index.html ── */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:28px 48px;max-width:960px;margin:0 auto;
+}
+nav a{
+  color:var(--dim);text-decoration:none;
+  font-size:14px;letter-spacing:.04em;
+  transition:color .15s;
+}
+nav a:hover{color:var(--fg);}
+.nav-r{display:flex;gap:28px;align-items:center;}
+
+/* ── PAGE SECTIONS ── */
+/* Each demo is a full-viewport section. The stage fills the viewport;
+   the chrome (label, code corner, action) lives at the edges. */
+.demo-section{
+  position:relative;
+  min-height:100vh;
+  overflow:hidden;
+  border-top:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+
+/* Top-left: demo label */
+.demo-label{
+  position:absolute;top:24px;left:32px;z-index:20;
+  font-family:var(--fn-display);
+  font-size:11px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;
+  pointer-events:none;
+}
+
+/* Bottom-left: action button(s) */
+.demo-actions{
+  position:absolute;bottom:28px;left:32px;z-index:20;
+  display:flex;gap:8px;align-items:center;
+}
+.demo-btn{
+  font-family:var(--fn-display);font-size:13px;
+  padding:8px 18px;
+  border:1px solid var(--border);color:var(--dim);
+  background:rgba(15,15,15,.85);backdrop-filter:blur(8px);
+  cursor:pointer;transition:all .13s;letter-spacing:.04em;
+}
+.demo-btn:hover{border-color:var(--border2);color:var(--fg);}
+
+/* Bottom-right: code snippet */
+.demo-code{
+  position:absolute;bottom:28px;right:32px;z-index:20;
+  background:rgba(8,8,8,.92);backdrop-filter:blur(12px);
+  border:1px solid var(--border);
+  padding:16px 20px;
+  font-family:var(--fn-mono);font-size:12px;line-height:1.75;
+  color:var(--dim);max-width:300px;pointer-events:none;
+}
+.demo-code .fn{color:#6699cc;font-weight:400;}
+.demo-code .st{color:#5aaa72;font-weight:400;}
+.demo-code .kw{color:#9f7dce;font-weight:400;}
+.demo-code .nu{color:#b07840;font-weight:400;}
+.demo-code .cm{color:#444454;font-weight:400;font-style:normal;}
+
+/* The stage itself — fills all remaining space */
+.demo-stage{
+  flex:1;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ═══ 01. GRAVITY ═══════════════════════════════════════════════ */
+#canvas-gravity{position:absolute;inset:0;width:100%;height:100%;}
+.gravity-mode-hint{
+  position:absolute;top:24px;right:32px;z-index:20;
+  font-family:var(--fn-display);font-size:11px;color:var(--dim);
+  letter-spacing:.06em;pointer-events:none;
+}
+
+/* ═══ 02. MAGNETIC CARDS ════════════════════════════════════════ */
+.cards-wrap{
+  display:flex;gap:20px;perspective:1400px;
+  align-items:center;padding:40px;flex-wrap:wrap;justify-content:center;
+}
+.mcard{
+  width:230px;height:310px;border-radius:18px;
+  position:relative;cursor:pointer;transform-style:preserve-3d;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:26px;overflow:hidden;flex-shrink:0;
+  border:1px solid rgba(255,255,255,.07);
+}
+.mcard-shine{
+  position:absolute;inset:0;border-radius:18px;pointer-events:none;z-index:2;
+  background:radial-gradient(480px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.13),transparent 45%);
+  opacity:0;transition:opacity .25s;
+}
+.mcard:hover .mcard-shine{opacity:1;}
+.mcard-icon{font-size:48px;position:absolute;top:26px;left:26px;z-index:1;}
+.mcard-title{font-size:17px;font-weight:700;position:relative;z-index:3;letter-spacing:-.02em;}
+.mcard-sub{font-size:13px;color:rgba(255,255,255,.5);position:relative;z-index:3;margin-top:4px;}
+
+/* ═══ 03. SWIPE DECK ════════════════════════════════════════════ */
+#swipe-section .demo-stage{flex-direction:column;gap:32px;}
+.swipe-pile{position:relative;width:320px;height:420px;}
+.scard{
+  position:absolute;inset:0;border-radius:18px;
+  cursor:grab;user-select:none;
+  display:flex;flex-direction:column;padding:32px;touch-action:none;
+  border:1px solid rgba(255,255,255,.08);
+}
+.scard:active{cursor:grabbing;}
+.scard-emoji{font-size:58px;margin-bottom:auto;}
+.scard-title{font-size:21px;font-weight:800;letter-spacing:-.035em;margin-bottom:6px;}
+.scard-body{font-size:14px;line-height:1.6;opacity:.6;}
+.swipe-hint{font-family:var(--fn-display);font-size:12px;color:var(--dim);letter-spacing:.05em;}
+
+/* ═══ 04. TAB INDICATOR ════════════════════════════════════════ */
+.tab-shell{
+  width:min(640px,calc(100vw - 96px));
+  border:1px solid var(--border);background:#0a0a0a;
+}
+.tab-nav{
+  display:flex;padding:6px;gap:2px;
+  border-bottom:1px solid var(--border);position:relative;
+}
+.tab-indicator{
+  position:absolute;background:#161616;
+  border:1px solid var(--border2);pointer-events:none;z-index:0;
+}
+.tab-btn{
+  padding:9px 20px;font-family:var(--fn-display);font-size:13px;
+  letter-spacing:.03em;cursor:pointer;border:none;background:transparent;
+  color:var(--dim);transition:color .15s;position:relative;z-index:1;
+}
+.tab-btn.active{color:var(--fg);}
+.tab-content{padding:36px;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.tab-panel h3{font-size:19px;font-weight:700;letter-spacing:-.025em;margin-bottom:10px;font-family:var(--fn-body);}
+.tab-panel p{font-family:var(--fn-body);font-size:15px;color:var(--dim);line-height:1.65;}
+.tab-stats{display:flex;gap:36px;margin-top:28px;border-top:1px solid var(--border);padding-top:24px;}
+.stat-n{display:block;font-family:var(--fn-display);font-size:22px;color:var(--fg);letter-spacing:-.03em;}
+.stat-l{font-family:var(--fn-display);font-size:10px;color:var(--dim2);letter-spacing:.06em;text-transform:uppercase;margin-top:4px;display:block;}
+
+/* ═══ 05. CARD EXPAND ══════════════════════════════════════════ */
+.flip-grid{
+  display:flex;gap:12px;flex-wrap:wrap;
+  justify-content:center;padding:40px;
+  align-items:flex-start;max-width:940px;
+}
+.fcard{
+  background:#0a0a0a;border:1px solid var(--border);
+  cursor:pointer;padding:22px;width:196px;flex-shrink:0;
+  transition:border-color .15s;
+}
+.fcard:hover{border-color:var(--border2);}
+.fcard.open{width:420px;}
+.fcard-icon{float:right;font-size:13px;color:var(--dim);}
+.fcard-title{font-size:14px;font-weight:700;letter-spacing:-.01em;font-family:var(--fn-body);margin-bottom:4px;clear:none;}
+.fcard-sub{font-size:12px;color:var(--dim);font-family:var(--fn-mono);}
+.fcard-body{
+  margin-top:14px;font-size:13px;color:var(--dim);
+  line-height:1.65;display:none;font-family:var(--fn-body);
+}
+.fcard.open .fcard-body{display:block;}
+
+/* ── SCROLL PROGRESS LINE ── */
+#scroll-line{
+  position:fixed;left:0;top:0;bottom:0;width:1px;
+  background:var(--border);z-index:500;pointer-events:none;
+}
+#scroll-fill{
+  position:absolute;top:0;left:0;width:100%;
+  background:var(--fg);height:0%;
+  transition:height .04s linear;
+}
+
+/* ═══ 07. SPRING VISUALIZER ════════════════════════════════════ */
+.spring-viz{
+  display:flex;flex-direction:column;align-items:center;gap:40px;
+  width:min(680px,calc(100vw - 96px));
+}
+.spring-canvas-wrap{
+  width:100%;border:1px solid var(--border);position:relative;
+}
+#spring-canvas{display:block;width:100%;height:180px;}
+.spring-controls{
+  display:flex;gap:48px;width:100%;
+}
+.spring-control{
+  flex:1;display:flex;flex-direction:column;gap:10px;
+}
+.spring-control-label{
+  font-family:var(--fn-display);font-size:11px;color:var(--dim);
+  letter-spacing:.08em;text-transform:uppercase;
+  display:flex;justify-content:space-between;
+}
+.spring-control-val{color:var(--fg);}
+input[type=range]{
+  width:100%;accent-color:var(--fg);
+  height:1px;background:var(--border);
+  -webkit-appearance:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:12px;height:12px;
+  background:var(--fg);border-radius:50%;
+}
+.spring-target{
+  width:56px;height:56px;border:1px solid var(--fg);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--fn-display);font-size:11px;color:var(--dim);
+  cursor:pointer;
+}
+.spring-ball-row{
+  display:flex;align-items:center;gap:24px;
+}
+
+/* ═══ 08. SEQUENCE / CHOREOGRAPHY ════════════════════════════ */
+.choreo-shell{
+  width:min(560px,calc(100vw - 96px));
+  border:1px solid var(--border);
+  background:#080808;
+  overflow:hidden;
+}
+.choreo-bar{
+  height:36px;background:#0a0a0a;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;padding:0 14px;
+}
+.choreo-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.choreo-title{font-family:var(--fn-mono);font-size:11px;color:var(--dim);margin-left:4px;}
+.choreo-body{padding:24px;}
+.choreo-row{margin-bottom:14px;opacity:0;transform:translateY(8px);}
+.choreo-row-lbl{font-family:var(--fn-mono);font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;}
+.choreo-row-bar{height:28px;background:var(--border);display:flex;align-items:center;padding:0 12px;}
+.choreo-row-text{font-family:var(--fn-body);font-size:13px;color:var(--dim);}
+.choreo-row.wide .choreo-row-bar{width:90%;}
+.choreo-row.mid  .choreo-row-bar{width:65%;}
+.choreo-row.short .choreo-row-bar{width:40%;}
+.choreo-row.inline{display:flex;gap:8px;margin-bottom:14px;}
+.choreo-row.inline .choreo-row-bar{flex:1;height:32px;}
+.choreo-badge{
+  padding:4px 10px;border:1px solid var(--border);
+  font-family:var(--fn-mono);font-size:10px;color:var(--dim);
+  opacity:0;transform:scale(0.88);
+  display:inline-flex;align-items:center;gap:5px;
+}
+.choreo-footer{
+  border-top:1px solid var(--border);
+  height:40px;display:flex;align-items:center;padding:0 24px;
+  gap:16px;opacity:0;
+}
+.choreo-footer-dot{width:5px;height:5px;border-radius:50%;background:var(--border);}
+
+/* ═══ 06. ACCORDION ════════════════════════════════════════════ */
+.acc-shell{width:min(600px,calc(100vw - 96px));}
+.acc-item{
+  border:1px solid var(--border);margin-bottom:6px;background:#0a0a0a;
+}
+.acc-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;cursor:pointer;
+  font-family:var(--fn-body);font-size:15px;font-weight:600;letter-spacing:-.01em;
+  transition:background .13s;
+}
+.acc-head:hover{background:#111;}
+.acc-chev{
+  font-family:var(--fn-display);font-size:13px;color:var(--dim);flex-shrink:0;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+}
+.acc-item.open .acc-chev{transform:rotate(180deg);}
+.acc-body{max-height:0;overflow:hidden;transition:max-height .32s cubic-bezier(.4,0,.2,1);}
+.acc-item.open .acc-body{max-height:200px;}
+.acc-body-inner{padding:0 22px 18px;font-family:var(--fn-body);font-size:14px;color:var(--dim);line-height:1.7;}
+</style>
+</head>
+<body>
+
+<canvas id="noise-canvas" aria-hidden="true"></canvas>
+<div id="scroll-line"><div id="scroll-fill"></div></div>
+
+<!-- NAV — exact index.html style -->
+<nav>
+  <a href="index.html" style="font-size:15px;letter-spacing:.06em;color:var(--fg);text-decoration:none;">JUMP</a>
+  <div class="nav-r">
+    <a href="showcase.html">showcase</a>
+    <a href="playground.html">playground</a>
+    <a href="https://github.com/ygwyg/jump">github →</a>
+  </div>
+</nav>
+
+<!-- ═══ 01. GRAVITY FIELD ════════════════════════════════════════ -->
+<section class="demo-section" id="gravity-section">
+  <div class="demo-label">01 — gravity field</div>
+  <div class="gravity-mode-hint" id="gravity-hint">move cursor · click to repel</div>
+  <div class="demo-stage">
+    <canvas id="canvas-gravity"></canvas>
+  </div>
+  <div class="demo-code">
+<span class="cm">// 240 particles, spring physics</span>
+<span class="cm">// hover: attract · click: repel</span>
+<span class="fn">jump</span>.<span class="fn">to</span>(particle, { x, y }, springs.<span class="fn">bouncy</span>)</div>
+</section>
+
+<!-- ═══ 02. MAGNETIC CARDS ══════════════════════════════════════ -->
+<section class="demo-section" id="magnetic-section">
+  <div class="demo-label">02 — magnetic cards · 3d tilt</div>
+  <div class="demo-stage">
+    <div class="cards-wrap" id="cards-wrap"></div>
+  </div>
+  <div class="demo-code">
+<span class="cm">// tilt follows cursor position</span>
+<span class="fn">jump</span>.<span class="fn">to</span>(card, {
+  rotateX: rx, rotateY: ry, scale: <span class="nu">1.04</span>
+}, springs.<span class="fn">stiff</span>)
+<span class="fn">jump</span>.<span class="fn">to</span>(card, { rotateX: <span class="nu">0</span>, rotateY: <span class="nu">0</span>, scale: <span class="nu">1</span> },
+  springs.<span class="fn">gentle</span>)</div>
+</section>
+
+<!-- ═══ 03. SWIPE DECK ══════════════════════════════════════════ -->
+<section class="demo-section" id="swipe-section">
+  <div class="demo-label">03 — swipe deck · drag + spring</div>
+  <div class="demo-stage" style="flex-direction:column;gap:28px;">
+    <div class="swipe-pile" id="swipe-pile"></div>
+    <div class="swipe-hint">drag to dismiss · release to snap back</div>
+  </div>
+  <div class="demo-code">
+<span class="cm">// velocity determines dismiss</span>
+<span class="fn">jump</span>.<span class="fn">drag</span>(card, {
+  axis: <span class="st">"x"</span>,
+  onDragEnd: state => {
+    <span class="kw">if</span> (Math.<span class="fn">abs</span>(state.x) > <span class="nu">140</span>) <span class="fn">dismiss</span>()
+  }
+})</div>
+</section>
+
+<!-- ═══ 04. TAB INDICATOR ═══════════════════════════════════════ -->
+<section class="demo-section" id="tabs-section">
+  <div class="demo-label">04 — shared element · tab indicator</div>
+  <div class="demo-stage">
+    <div class="tab-shell">
+      <div class="tab-nav" id="tab-nav">
+        <div class="tab-indicator" id="tab-indicator"></div>
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="analytics">Analytics</button>
+        <button class="tab-btn" data-tab="workers">Workers</button>
+        <button class="tab-btn" data-tab="billing">Billing</button>
+      </div>
+      <div class="tab-content">
+        <div class="tab-panel active" data-panel="overview">
+          <h3>Welcome back</h3>
+          <p>All systems operational. Three active deployments, no errors in the last 24h. Your edge network is serving requests from 300 cities.</p>
+          <div class="tab-stats">
+            <div><span class="stat-n">99.98%</span><span class="stat-l">uptime</span></div>
+            <div><span class="stat-n">2ms</span><span class="stat-l">p50 latency</span></div>
+            <div><span class="stat-n">1.4B</span><span class="stat-l">req / day</span></div>
+          </div>
+        </div>
+        <div class="tab-panel" data-panel="analytics">
+          <h3>Traffic analytics</h3>
+          <p>Page views up 18% month-over-month. Cache hit rate at 94.2%. Top region: US West, accounting for 34% of traffic.</p>
+          <div class="tab-stats">
+            <div><span class="stat-n">+18%</span><span class="stat-l">growth</span></div>
+            <div><span class="stat-n">94%</span><span class="stat-l">cache hit</span></div>
+            <div><span class="stat-n">42ms</span><span class="stat-l">avg TTFB</span></div>
+          </div>
+        </div>
+        <div class="tab-panel" data-panel="workers">
+          <h3>Edge compute</h3>
+          <p>247 Workers deployed across 300 PoPs. Average CPU time 1.2ms. Zero cold starts in the last week.</p>
+          <div class="tab-stats">
+            <div><span class="stat-n">247</span><span class="stat-l">workers</span></div>
+            <div><span class="stat-n">1.2ms</span><span class="stat-l">avg CPU</span></div>
+            <div><span class="stat-n">0</span><span class="stat-l">cold starts</span></div>
+          </div>
+        </div>
+        <div class="tab-panel" data-panel="billing">
+          <h3>Usage &amp; billing</h3>
+          <p>Pro plan · $20/month. Zero egress costs. Next invoice Feb 1.</p>
+          <div class="tab-stats">
+            <div><span class="stat-n">$20</span><span class="stat-l">/ month</span></div>
+            <div><span class="stat-n">$0</span><span class="stat-l">egress</span></div>
+            <div><span class="stat-n">Feb 1</span><span class="stat-l">next bill</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-code">
+<span class="cm">// indicator is a shared element</span>
+<span class="fn">jump</span>.<span class="fn">snapshot</span>(indicator, <span class="st">"tab"</span>)
+moveToNewTab()
+<span class="fn">jump</span>.<span class="fn">shared</span>(indicator, <span class="st">"tab"</span>, { style: <span class="st">"snappy"</span> })</div>
+</section>
+
+<!-- ═══ 05. CARD EXPAND (FLIP) ══════════════════════════════════ -->
+<section class="demo-section" id="flip-section">
+  <div class="demo-label">05 — FLIP · expand / collapse</div>
+  <div class="demo-stage">
+    <div class="flip-grid">
+      <div class="fcard" id="fc1">
+        <span class="fcard-icon">+</span>
+        <div class="fcard-title">Workers KV</div>
+        <div class="fcard-sub">global key-value</div>
+        <div class="fcard-body">Low-latency reads at the edge. Write once, available worldwide in milliseconds. 25M reads included on the free tier.</div>
+      </div>
+      <div class="fcard" id="fc2">
+        <span class="fcard-icon">+</span>
+        <div class="fcard-title">R2 Storage</div>
+        <div class="fcard-sub">object storage</div>
+        <div class="fcard-body">S3-compatible object storage with zero egress fees. Store unlimited objects, pay only for what you store.</div>
+      </div>
+      <div class="fcard" id="fc3">
+        <span class="fcard-icon">+</span>
+        <div class="fcard-title">D1 Database</div>
+        <div class="fcard-sub">sqlite at the edge</div>
+        <div class="fcard-body">Serverless SQL database built on SQLite. Query your data from any Worker, with globally distributed reads.</div>
+      </div>
+      <div class="fcard" id="fc4">
+        <span class="fcard-icon">+</span>
+        <div class="fcard-title">Durable Objects</div>
+        <div class="fcard-sub">stateful compute</div>
+        <div class="fcard-body">Strongly consistent stateful serverless. Perfect for real-time collaboration, game state, and live counters.</div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-code">
+<span class="cm">// capture → mutate → flip</span>
+<span class="kw">const</span> snap = <span class="fn">jump</span>.<span class="fn">capture</span>(card)
+card.classList.<span class="fn">toggle</span>(<span class="st">"open"</span>)
+<span class="fn">jump</span>.<span class="fn">flip</span>(card, snap, { style: <span class="st">"spring"</span> })</div>
+</section>
+
+<!-- ═══ 07. SPRING VISUALIZER ════════════════════════════════════ -->
+<section class="demo-section" id="spring-viz-section">
+  <div class="demo-label">07 — spring visualizer · live physics</div>
+  <div class="demo-stage" style="flex-direction:column;gap:32px;">
+    <div class="spring-viz">
+      <div style="width:100%;display:flex;align-items:center;gap:24px;">
+        <div class="spring-target" id="spring-viz-target">fire</div>
+        <div style="flex:1;">
+          <div style="font-family:var(--fn-body);font-size:14px;color:var(--dim);line-height:1.6;margin-bottom:8px;">
+            Drag the sliders to adjust the spring. Click <em style="color:var(--fg);font-style:normal">fire</em> to animate the target and watch the physics curve trace in real time.
+          </div>
+        </div>
+      </div>
+      <div class="spring-canvas-wrap">
+        <canvas id="spring-canvas"></canvas>
+      </div>
+      <div class="spring-controls">
+        <div class="spring-control">
+          <div class="spring-control-label">stiffness <span class="spring-control-val" id="stiff-val">170</span></div>
+          <input type="range" id="stiff-range" min="40" max="600" value="170">
+        </div>
+        <div class="spring-control">
+          <div class="spring-control-label">damping <span class="spring-control-val" id="damp-val">26</span></div>
+          <input type="range" id="damp-range" min="4" max="60" value="26">
+        </div>
+        <div class="spring-control">
+          <div class="spring-control-label">mass <span class="spring-control-val" id="mass-val">1.0</span></div>
+          <input type="range" id="mass-range" min="1" max="30" value="10">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="demo-code">
+<span class="cm">// custom spring from physics params</span>
+<span class="kw">const</span> s = <span class="fn">createSpring</span>({ stiffness, damping, mass })
+<span class="fn">jump</span>(el, <span class="st">"enter from bottom"</span>, s)
+<span class="cm">// → { easing: "linear(...)", duration: 891 }</span></div>
+</section>
+
+<!-- ═══ 08. SEQUENCE / CHOREOGRAPHY ══════════════════════════════ -->
+<section class="demo-section" id="choreo-section">
+  <div class="demo-label">08 — sequence · choreography</div>
+  <div class="demo-stage" style="flex-direction:column;gap:28px;">
+    <div class="choreo-shell" id="choreo-shell">
+      <div class="choreo-bar">
+        <div class="choreo-dot"></div><div class="choreo-dot"></div><div class="choreo-dot"></div>
+        <span class="choreo-title">dashboard.tsx</span>
+      </div>
+      <div class="choreo-body">
+        <div class="choreo-row wide" id="ch-header">
+          <div class="choreo-row-lbl">header</div>
+          <div class="choreo-row-bar"><span class="choreo-row-text">Dashboard</span></div>
+        </div>
+        <div class="choreo-row mid" id="ch-nav">
+          <div class="choreo-row-lbl">navigation</div>
+          <div class="choreo-row-bar"><span class="choreo-row-text">Overview · Analytics · Workers · R2</span></div>
+        </div>
+        <div class="choreo-row inline" id="ch-stats">
+          <div class="choreo-row-bar"><span class="choreo-row-text">1.4B requests</span></div>
+          <div class="choreo-row-bar"><span class="choreo-row-text">99.98% uptime</span></div>
+          <div class="choreo-row-bar"><span class="choreo-row-text">$0 egress</span></div>
+        </div>
+        <div class="choreo-row wide" id="ch-chart">
+          <div class="choreo-row-lbl">chart</div>
+          <div class="choreo-row-bar" style="height:52px;"><span class="choreo-row-text">request volume ↗</span></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <div class="choreo-badge" id="ch-b1"><span>●</span> Workers running</div>
+          <div class="choreo-badge" id="ch-b2"><span>●</span> Zero errors</div>
+          <div class="choreo-badge" id="ch-b3"><span>●</span> All green</div>
+        </div>
+        <div class="choreo-row short" id="ch-footer-row">
+          <div class="choreo-row-lbl">footer</div>
+          <div class="choreo-row-bar"><span class="choreo-row-text">© 2026</span></div>
+        </div>
+      </div>
+      <div class="choreo-footer" id="ch-footer">
+        <div class="choreo-footer-dot"></div>
+        <div class="choreo-footer-dot"></div>
+        <span style="font-family:var(--fn-mono);font-size:11px;color:var(--dim);">sequence complete</span>
+      </div>
+    </div>
+    <button class="demo-btn" id="choreo-replay" style="position:static;">replay →</button>
+  </div>
+  <div class="demo-code">
+<span class="fn">jump</span>.<span class="fn">sequence</span>([
+  [header,  <span class="st">"enter from top"</span>   ],
+  [nav,     <span class="st">"enter from left"</span>  ],
+  [stats,   <span class="st">"enter from bottom"</span>, { stagger: <span class="nu">60</span> }],
+  [chart,   <span class="st">"fade in slide up"</span> ],
+  [badges,  <span class="st">"pop"</span>, { stagger: <span class="nu">80</span> }],
+], { overlap: <span class="nu">100</span> })</div>
+</section>
+
+<!-- ═══ 06. ACCORDION ═══════════════════════════════════════════ -->
+<section class="demo-section" id="accordion-section">
+  <div class="demo-label">09 — sibling FLIP · accordion</div>
+  <div class="demo-stage">
+    <div class="acc-shell" id="acc-shell"></div>
+  </div>
+  <div class="demo-code">
+<span class="cm">// snapshot all → toggle → flip all</span>
+<span class="kw">const</span> snaps = items.<span class="fn">map</span>(el => [el, <span class="fn">jump</span>.<span class="fn">capture</span>(el)])
+item.classList.<span class="fn">toggle</span>(<span class="st">"open"</span>)
+snaps.<span class="fn">forEach</span>(([el, s]) => <span class="fn">jump</span>.<span class="fn">flip</span>(el, s))</div>
+</section>
+
+<script>
+// ── NOISE (same as index.html) ────────────────────────────────
+(function(){
+  const canvas=document.getElementById('noise-canvas');
+  if(!canvas)return;
+  function generate(){
+    canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+    const ctx=canvas.getContext('2d');
+    const img=ctx.createImageData(canvas.width,canvas.height);
+    const data=img.data;
+    let seed=0xdeadbeef;
+    function rand(){seed^=seed<<13;seed^=seed>>17;seed^=seed<<5;return(seed>>>0)/0xffffffff;}
+    for(let i=0;i<data.length;i+=4){
+      const r=rand();
+      if(r<0.18){const v=(r/0.18*255)|0;data[i]=data[i+1]=data[i+2]=v;data[i+3]=255;}
+    }
+    ctx.putImageData(img,0,0);
+  }
+  generate();
+  let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(generate,200);});
+})();
+</script>
+
+<script type="module">
+// ════════════════════════════════════════════════════════════════
+// JUMP — inlined spring physics + animation engine
+// ════════════════════════════════════════════════════════════════
+function sPos(t,w,z,v0){if(z<1){const d=w*Math.sqrt(1-z*z),B=(z*w+v0)/d;return 1-Math.exp(-z*w*t)*(Math.cos(d*t)+B*Math.sin(d*t))}if(z===1)return 1-Math.exp(-w*t)*(1+(w+v0)*t);const r1=-w*(z-Math.sqrt(z*z-1)),r2=-w*(z+Math.sqrt(z*z-1)),c2=(r1+v0)/(r1-r2);return 1-((1-c2)*Math.exp(r1*t)+c2*Math.exp(r2*t))}
+function fS(w,z,v0){let hi=.5;while(Math.abs(sPos(hi,w,z,v0)-1)>.0001){hi*=2;if(hi>60)return 10}let lo=0;for(let i=0;i<48;i++){const m=(lo+hi)/2;Math.abs(sPos(m,w,z,v0)-1)>.0001?lo=m:hi=m}return hi}
+function sdist(px,py,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,l=dx*dx+dy*dy;if(!l)return Math.hypot(px-x1,py-y1);const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l));return Math.hypot(px-(x1+t*dx),py-(y1+t*dy))}
+function rdp(pts,s,e,eps,k){if(e-s<=1)return;let mx=0,mi=s;const[x1,y1]=pts[s],[x2,y2]=pts[e];for(let i=s+1;i<e;i++){const d=sdist(...pts[i],x1,y1,x2,y2);if(d>mx){mx=d;mi=i}}if(mx>eps){k[mi]=1;rdp(pts,s,mi,eps,k);rdp(pts,mi,e,eps,k)}}
+function mkSp({stiffness:s=170,damping:d=26,mass:m=1,velocity:v=0}={}){
+  if(s<=0||m<=0)return{easing:'ease-out',duration:300};
+  const w=Math.sqrt(s/m),z=d/(2*Math.sqrt(s*m));
+  const dur=fS(w,z,v),N=Math.min(Math.max(120,Math.ceil(w*dur/Math.PI*12)),400);
+  const sa=Array.from({length:N+1},(_,i)=>Math.max(-3,Math.min(3,sPos(i/N*dur,w,z,v))));
+  const pts=sa.map((v2,i)=>[i/N,v2]);const k=new Uint8Array(N+1);k[0]=k[N]=1;rdp(pts,0,N,.0004,k);
+  return{easing:`linear(${sa.map((v2,i)=>{if(!k[i])return null;const p=Math.round(i/N*1000)/10,vv=Math.round(v2*1e5)/1e5;return i===0||i===N?`${vv}`:`${vv} ${p}%`}).filter(Boolean).join(',')})`,duration:Math.round(dur*1e3)};
+}
+const springs={
+  get bouncy(){return mkSp({stiffness:300,damping:20})},
+  get gentle(){return mkSp({stiffness:120,damping:14})},
+  get stiff() {return mkSp({stiffness:500,damping:40})},
+  get snappy(){return mkSp({stiffness:400,damping:34})},
+  get default(){return mkSp({stiffness:170,damping:26})},
+};
+function cc(el){el.getAnimations().filter(a=>a.__j).forEach(a=>{try{a.commitStyles()}catch{};a.cancel()})}
+function wa(el,kfs,opt){cc(el);const a=el.animate(kfs,{fill:'forwards',...opt});a.__j=true;a.finished.then(()=>{try{a.commitStyles()}catch{};a.cancel()}).catch(()=>{});return a;}
+function tf(fs){return fs.map(f=>{const r={},t=[];
+  if(f.x!=null)t.push(`translateX(${f.x}px)`);
+  if(f.y!=null)t.push(`translateY(${f.y}px)`);
+  if(f.s!=null)t.push(`scale(${f.s})`);
+  if(f.r!=null)t.push(`rotate(${f.r}deg)`);
+  if(f.rx!=null)t.push(`perspective(900px) rotateX(${f.rx}deg)`);
+  if(f.ry!=null)t.push(`perspective(900px) rotateY(${f.ry}deg)`);
+  if(t.length)r.transform=t.join(' ');
+  if(f.o!=null)r.opacity=f.o;if(f.at!=null)r.offset=f.at;return r})}
+function cap(el){return{rect:el.getBoundingClientRect()};}
+function doFlip(el,from,style='spring'){
+  const to=el.getBoundingClientRect();
+  const dx=from.rect.left-to.left,dy=from.rect.top-to.top;
+  const sw=from.rect.width/(to.width||1),sh=from.rect.height/(to.height||1);
+  if(Math.abs(dx)<.5&&Math.abs(dy)<.5&&Math.abs(sw-1)<.005&&Math.abs(sh-1)<.005)return;
+  cc(el);
+  const cfgs={spring:{stiffness:260,damping:28},snappy:{stiffness:400,damping:34}};
+  const{easing:fe,duration:fd}=mkSp(cfgs[style]||cfgs.spring);
+  const a=el.animate([
+    {transform:`translate(${dx}px,${dy}px) scaleX(${sw}) scaleY(${sh})`,transformOrigin:'top left'},
+    {transform:'none',transformOrigin:'top left'}
+  ],{duration:fd,easing:fe,fill:'forwards'});
+  a.__j=true;a.finished.then(()=>{try{a.commitStyles()}catch{};a.cancel()}).catch(()=>{});
+}
+
+// ════════════════════════════════════════════════════════════════
+// 01. GRAVITY FIELD
+// ════════════════════════════════════════════════════════════════
+{
+  const canvas=document.getElementById('canvas-gravity');
+  const ctx=canvas.getContext('2d');
+  let W,H;
+  function resize(){W=canvas.width=canvas.offsetWidth;H=canvas.height=canvas.offsetHeight;}
+  resize();window.addEventListener('resize',resize);
+
+  const N=240;
+  const pts=Array.from({length:N},()=>{
+    const x=Math.random()*window.innerWidth,y=Math.random()*window.innerHeight;
+    return{x,y,ox:x,oy:y,vx:0,vy:0,r:Math.random()*1.6+.5};
+  });
+
+  let mx=-9999,my=-9999,repel=false;
+  const PULL=160,ATT=0.052,REP=0.2,DAMP=0.89,RRAD=200;
+
+  canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;});
+  canvas.addEventListener('mouseleave',()=>{mx=-9999;my=-9999;repel=false;});
+  canvas.addEventListener('mousedown',()=>{repel=true;});
+  canvas.addEventListener('mouseup',()=>{repel=false;});
+
+  (function tick(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of pts){
+      const dx=mx-p.x,dy=my-p.y,d=Math.sqrt(dx*dx+dy*dy);
+      if(repel&&d<RRAD){const f=REP*(1-d/RRAD);p.vx-=dx*f;p.vy-=dy*f;}
+      else if(!repel&&d<PULL&&mx>-999){p.vx+=dx*ATT;p.vy+=dy*ATT;}
+      else{p.vx+=(p.ox-p.x)*0.038;p.vy+=(p.oy-p.y)*0.038;}
+      p.vx*=DAMP;p.vy*=DAMP;p.x+=p.vx;p.y+=p.vy;
+      const speed=Math.sqrt(p.vx*p.vx+p.vy*p.vy);
+      const glow=repel&&d<RRAD?0.85:Math.min(0.85,speed*.38);
+      const alpha=0.22+glow*.68;
+      const radius=p.r+(repel&&d<RRAD?glow*2.2:glow*.8);
+      // Monochrome — white dots, varying brightness
+      ctx.beginPath();ctx.arc(p.x,p.y,radius,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${200+glow*55|0},${200+glow*55|0},${200+glow*55|0},${alpha})`;
+      ctx.fill();
+    }
+    // Connection lines — monochrome
+    for(let i=0;i<N;i++){
+      for(let j=i+1;j<N;j++){
+        const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<80){
+          ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);
+          ctx.strokeStyle=`rgba(255,255,255,${(1-d/80)*0.06})`;ctx.lineWidth=1;ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(tick);
+  })();
+}
+
+// ════════════════════════════════════════════════════════════════
+// 02. MAGNETIC CARDS
+// ════════════════════════════════════════════════════════════════
+{
+  const cardData=[
+    {icon:'⚡',title:'Workers',sub:'edge compute · 0ms cold start',bg:'#0a0a0a',border:'rgba(255,255,255,.1)'},
+    {icon:'🗄️',title:'R2 Storage',sub:'object storage · zero egress',bg:'#080810',border:'rgba(255,255,255,.08)'},
+    {icon:'🌐',title:'Pages',sub:'fullstack · globally fast',bg:'#080a08',border:'rgba(255,255,255,.08)'},
+    {icon:'🔒',title:'Zero Trust',sub:'access without a VPN',bg:'#0a080a',border:'rgba(255,255,255,.08)'},
+  ];
+
+  const wrap=document.getElementById('cards-wrap');
+  cardData.forEach((c,i)=>{
+    const div=document.createElement('div');div.className='mcard';
+    div.style.cssText=`background:${c.bg};box-shadow:0 16px 48px rgba(0,0,0,.5);border-color:${c.border};`;
+    div.innerHTML=`<div class="mcard-shine"></div><div class="mcard-icon">${c.icon}</div><h3 class="mcard-title" style="font-family:var(--fn-body)">${c.title}</h3><span class="mcard-sub" style="font-family:var(--fn-mono);font-size:11px">${c.sub}</span>`;
+    div.style.opacity='0';
+    wrap.appendChild(div);
+
+    setTimeout(()=>{wa(div,tf([{y:36,o:0},{y:0,o:1}]),{duration:560,...springs.bouncy});},i*110+200);
+
+    div.addEventListener('mousemove',e=>{
+      const r=div.getBoundingClientRect();
+      const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+      const ry=(x-.5)*20,rx=(.5-y)*13;
+      div.querySelector('.mcard-shine').style.setProperty('--mx',(e.clientX-r.left)+'px');
+      div.querySelector('.mcard-shine').style.setProperty('--my',(e.clientY-r.top)+'px');
+      wa(div,tf([{ry,rx,s:1.04}]),{duration:160,...springs.stiff});
+    });
+    div.addEventListener('mouseleave',()=>{wa(div,tf([{ry:0,rx:0,s:1}]),{duration:380,...springs.gentle});});
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// 03. SWIPE DECK
+// ════════════════════════════════════════════════════════════════
+{
+  const deck=[
+    {emoji:'⚡',title:'Intent strings.',body:'jump(el, "fade in slide up") — AI generates this correctly, every time.',bg:'#0d0d0d'},
+    {emoji:'🔒',title:'Real springs.',body:'Damped harmonic oscillator. Real overshoot via CSS linear(). Compositor thread.',bg:'#0a0a0d'},
+    {emoji:'🌐',title:'Zero deps.',body:'12KB gzipped. Works with React, Vue, vanilla JS, or anything else.',bg:'#0a0d0a'},
+    {emoji:'🗄️',title:'Layout / FLIP.',body:'Capture, mutate, flip. Every element glides to its new position.',bg:'#0d0a0a'},
+    {emoji:'🎯',title:'AI-first.',body:'AGENTS.md · 30+ intent strings · TypeScript literal types · zero setup.',bg:'#0d0a0d'},
+  ];
+
+  const pile=document.getElementById('swipe-pile');
+  let remaining=[...deck];
+
+  function build(){
+    pile.innerHTML='';
+    remaining.slice(0,3).reverse().forEach((card,si)=>{
+      const isTop=si===Math.min(remaining.length,3)-1;
+      const offset=(Math.min(remaining.length,3)-1-si)*6;
+      const scale=1-(Math.min(remaining.length,3)-1-si)*0.045;
+      const div=document.createElement('div');div.className='scard';
+      div.style.cssText=`background:${card.bg};z-index:${si+1};
+        transform:translateY(${offset}px) scale(${scale});
+        border-color:rgba(255,255,255,${.06+si*.03})`;
+      div.innerHTML=`<div class="scard-emoji">${card.emoji}</div><h3 class="scard-title">${card.title}</h3><p class="scard-body">${card.body}</p>`;
+      pile.appendChild(div);
+
+      if(isTop){
+        let dragging=false,sx=0,sy=0,cx=0,cy=0;
+        const DISMISS=140;
+        div.addEventListener('pointerdown',e=>{dragging=true;div.setPointerCapture(e.pointerId);sx=e.clientX;sy=e.clientY;cx=0;cy=0;div.style.transition='none';});
+        div.addEventListener('pointermove',e=>{
+          if(!dragging)return;cx=e.clientX-sx;cy=e.clientY-sy;
+          div.style.transform=`translate(${cx}px,${cy}px) rotate(${cx*.07}deg)`;
+          div.style.opacity=Math.max(0,1-Math.abs(cx)/380);
+        });
+        const rel=()=>{
+          if(!dragging)return;dragging=false;
+          if(Math.abs(cx)>DISMISS){
+            const dir=cx>0?1:-1;const{easing:e2,duration:d2}=springs.stiff;
+            div.animate([{transform:div.style.transform,opacity:div.style.opacity},{transform:`translate(${dir*580}px,${cy}px) rotate(${dir*26}deg)`,opacity:0}],{duration:d2*.7,easing:e2,fill:'forwards'})
+              .finished.then(()=>{remaining.shift();if(!remaining.length)remaining=[...deck];build();});
+          } else {
+            const{easing:e2,duration:d2}=springs.bouncy;
+            div.animate([{transform:div.style.transform,opacity:div.style.opacity},{transform:`translateY(0) scale(1)`,opacity:1}],{duration:d2,easing:e2,fill:'forwards'})
+              .finished.then(()=>{div.style.transform='';div.style.opacity='1';}).catch(()=>{});
+          }
+        };
+        div.addEventListener('pointerup',rel);div.addEventListener('pointercancel',rel);
+      }
+    });
+    const top=pile.lastElementChild;
+    if(top)wa(top,tf([{s:.94,o:.7},{s:1,o:1}]),{duration:260,...springs.stiff});
+  }
+  build();
+}
+
+// ════════════════════════════════════════════════════════════════
+// 04. TAB INDICATOR
+// ════════════════════════════════════════════════════════════════
+{
+  const indicator=document.getElementById('tab-indicator');
+  const nav=document.getElementById('tab-nav');
+  const btns=document.querySelectorAll('.tab-btn');
+  const panels=document.querySelectorAll('.tab-panel');
+  let ready=false;
+
+  function moveIndicator(btn,animate){
+    const nr=nav.getBoundingClientRect(),br=btn.getBoundingClientRect();
+    const l=br.left-nr.left,t=br.top-nr.top;
+    if(!ready||!animate){
+      indicator.style.cssText=`left:${l}px;top:${t}px;width:${br.width}px;height:${br.height}px;`;
+      ready=true;return;
+    }
+    const snap=cap(indicator);
+    indicator.style.left=l+'px';indicator.style.top=t+'px';
+    indicator.style.width=br.width+'px';indicator.style.height=br.height+'px';
+    doFlip(indicator,snap,'snappy');
+  }
+
+  moveIndicator(document.querySelector('.tab-btn.active'),false);
+
+  btns.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      btns.forEach(b=>b.classList.remove('active'));
+      panels.forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelector(`[data-panel="${btn.dataset.tab}"]`).classList.add('active');
+      moveIndicator(btn,true);
+    });
+  });
+
+  // Entrance on scroll
+  const io=new IntersectionObserver(e=>{
+    if(e[0].isIntersecting){
+      wa(document.querySelector('.tab-shell'),tf([{y:20,o:0},{y:0,o:1}]),{duration:480,...springs.bouncy});
+      io.disconnect();
+    }
+  },{threshold:.3});
+  io.observe(document.getElementById('tabs-section'));
+}
+
+// ════════════════════════════════════════════════════════════════
+// 05. CARD EXPAND
+// ════════════════════════════════════════════════════════════════
+{
+  ['fc1','fc2','fc3','fc4'].forEach(id=>{
+    const card=document.getElementById(id);
+    card.addEventListener('click',()=>{
+      const snap=cap(card);
+      card.classList.toggle('open');
+      doFlip(card,snap,'spring');
+    });
+  });
+
+  const io=new IntersectionObserver(e=>{
+    if(e[0].isIntersecting){
+      const cards=[...document.querySelectorAll('.fcard')];
+      cards.forEach(c=>c.style.opacity='0');
+      cards.forEach((c,i)=>setTimeout(()=>wa(c,tf([{y:16,o:0},{y:0,o:1}]),{duration:380,...springs.bouncy}),i*80+100));
+      io.disconnect();
+    }
+  },{threshold:.2});
+  io.observe(document.getElementById('flip-section'));
+}
+
+// ════════════════════════════════════════════════════════════════
+// 06. ACCORDION
+// ════════════════════════════════════════════════════════════════
+{
+  const accData=[
+    {q:'Why intent strings?',a:'Other libraries require exact property names, easing strings, and specific API syntax. Intent strings are plain English — any LLM generates them correctly on the first try, without documentation lookup. The type system enforces correctness at compile time.'},
+    {q:'How does FLIP work?',a:'FLIP: First, Last, Invert, Play. Jump captures the element\'s bounding rect before the DOM change, lets the mutation happen, then applies an inverted transform so the element appears at its old position — and animates that transform to identity.'},
+    {q:'Are the springs real physics?',a:'Yes. Jump solves the damped harmonic oscillator and samples the result into a CSS linear() easing. This runs on the compositor thread with genuine overshoot — something cubic-bezier cannot achieve for transform or opacity.'},
+    {q:'What about prefers-reduced-motion?',a:'All animations respect prefers-reduced-motion by default. When set, animations run with duration:0 so elements reach their final state instantly. All WAAPI events still fire correctly, so callbacks and promises work as expected.'},
+    {q:'How does it compare to Motion?',a:'Motion optimises for human developers reading documentation. Jump optimises for AI generation — string literals, one consistent function shape, no magic arguments. For AI-generated UI, Jump produces fewer errors on the first generation.'},
+  ];
+
+  const shell=document.getElementById('acc-shell');
+  accData.forEach((item)=>{
+    const div=document.createElement('div');div.className='acc-item';
+    div.innerHTML=`<div class="acc-head"><span>${item.q}</span><span class="acc-chev">▾</span></div><div class="acc-body"><div class="acc-body-inner">${item.a}</div></div>`;
+    shell.appendChild(div);
+    div.querySelector('.acc-head').addEventListener('click',()=>{
+      const all=[...shell.querySelectorAll('.acc-item')];
+      const snaps=all.map(el=>({el,s:cap(el)}));
+      div.classList.toggle('open');
+      requestAnimationFrame(()=>snaps.forEach(({el,s})=>doFlip(el,s,'spring')));
+    });
+  });
+
+  const io=new IntersectionObserver(e=>{
+    if(e[0].isIntersecting){
+      const items=[...shell.querySelectorAll('.acc-item')];
+      items.forEach(el=>el.style.opacity='0');
+      items.forEach((el,i)=>setTimeout(()=>wa(el,tf([{y:12,o:0},{y:0,o:1}]),{duration:360,...springs.stiff}),i*65+100));
+      io.disconnect();
+    }
+  },{threshold:.2});
+  io.observe(shell);
+}
+
+// ════════════════════════════════════════════════════════════════
+// SCROLL PROGRESS LINE
+// ════════════════════════════════════════════════════════════════
+{
+  const fill = document.getElementById('scroll-fill');
+  window.addEventListener('scroll', () => {
+    const max = document.body.scrollHeight - window.innerHeight;
+    const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+    fill.style.height = pct + '%';
+  }, {passive:true});
+}
+
+// ════════════════════════════════════════════════════════════════
+// LABEL SCRAMBLE ON SECTION ENTRANCE
+// ════════════════════════════════════════════════════════════════
+{
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789—·/';
+  function scrambleTo(el, target) {
+    const len = target.length;
+    let frame = 0;
+    const totalFrames = 18;
+    const id = setInterval(() => {
+      const settled = Math.floor((frame / totalFrames) * len);
+      let txt = '';
+      for (let i = 0; i < len; i++) {
+        if (i < settled) txt += target[i];
+        else if (target[i] === ' ' || target[i] === '—' || target[i] === '·') txt += target[i];
+        else txt += CHARS[Math.floor(Math.random() * CHARS.length)];
+      }
+      el.textContent = txt;
+      frame++;
+      if (frame > totalFrames) { el.textContent = target; clearInterval(id); }
+    }, 30);
+  }
+
+  const labels = document.querySelectorAll('.demo-label');
+  const labelObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const el = e.target;
+        const original = el.textContent;
+        el.textContent = original.replace(/[^— ·]/g, () => CHARS[Math.floor(Math.random() * CHARS.length)]);
+        setTimeout(() => scrambleTo(el, original), 80);
+        labelObs.unobserve(el);
+      }
+    });
+  }, {threshold: .5});
+  labels.forEach(l => labelObs.observe(l));
+}
+
+// ════════════════════════════════════════════════════════════════
+// 07. SPRING VISUALIZER
+// ════════════════════════════════════════════════════════════════
+{
+  const canvas = document.getElementById('spring-canvas');
+  const ctx = canvas.getContext('2d');
+  const target = document.getElementById('spring-viz-target');
+  const stiffRange = document.getElementById('stiff-range');
+  const dampRange  = document.getElementById('damp-range');
+  const massRange  = document.getElementById('mass-range');
+  const stiffVal   = document.getElementById('stiff-val');
+  const dampVal    = document.getElementById('damp-val');
+  const massVal    = document.getElementById('mass-val');
+
+  let animating = false;
+  let animProgress = null; // 0-1 progress each frame
+
+  function getParams() {
+    return {
+      stiffness: Number(stiffRange.value),
+      damping:   Number(dampRange.value),
+      mass:      Number(massRange.value) / 10,
+    };
+  }
+
+  function drawCurve(highlightT = -1) {
+    const W = canvas.offsetWidth * devicePixelRatio;
+    const H = canvas.offsetHeight * devicePixelRatio;
+    canvas.width = W; canvas.height = H;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    const dw = canvas.offsetWidth, dh = canvas.offsetHeight;
+
+    ctx.clearRect(0, 0, dw, dh);
+
+    const {stiffness, damping, mass} = getParams();
+    const sp = mkSp({stiffness, damping, mass});
+
+    // Draw baseline and target lines
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, dh*.8); ctx.lineTo(dw, dh*.8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, dh*.15); ctx.lineTo(dw, dh*.15); ctx.stroke();
+
+    // Axis labels
+    ctx.fillStyle = '#555'; ctx.font = `${10 * devicePixelRatio / devicePixelRatio}px JetBrains Mono`;
+    ctx.fillText('0', 4, dh*.8 - 4);
+    ctx.fillText('1', 4, dh*.15 - 4);
+
+    // Sample the curve
+    const N = 200;
+    const dur = sp.duration;
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#f0f0f0';
+    ctx.lineWidth = 1.5;
+
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      // Evaluate spring position at this time
+      const w = Math.sqrt(stiffness / mass);
+      const z = damping / (2 * Math.sqrt(stiffness * mass));
+      const timeS = t * (dur / 1000);
+      const val = Math.max(-0.5, Math.min(1.5, sPos(timeS, w, z, 0)));
+
+      const x = t * dw;
+      const y = dh*.8 - val * (dh*.8 - dh*.15);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Highlight dot at current position
+    if (highlightT >= 0 && highlightT <= 1) {
+      const w = Math.sqrt(stiffness / mass);
+      const z = damping / (2 * Math.sqrt(stiffness * mass));
+      const timeS = highlightT * (dur / 1000);
+      const val = Math.max(-0.5, Math.min(1.5, sPos(timeS, w, z, 0)));
+      const x = highlightT * dw;
+      const y = dh*.8 - val * (dh*.8 - dh*.15);
+
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI*2);
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fill();
+    }
+
+    // Duration label
+    ctx.fillStyle = '#555';
+    ctx.fillText(`${dur}ms`, dw - 48, dh - 6);
+  }
+
+  function fireSpring() {
+    if (animating) return;
+    animating = true;
+
+    const {stiffness, damping, mass} = getParams();
+    const sp = mkSp({stiffness, damping, mass});
+
+    // Animate the target box
+    wa(target, tf([{y: 0}, {y: -32, at:.25}, {y:0}]), {duration: sp.duration, easing: sp.easing});
+
+    // Trace the dot across the curve in real time
+    const start = performance.now();
+    function traceFn(now) {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / sp.duration);
+      drawCurve(t);
+      if (t < 1) requestAnimationFrame(traceFn);
+      else { drawCurve(-1); animating = false; }
+    }
+    requestAnimationFrame(traceFn);
+  }
+
+  target.addEventListener('click', fireSpring);
+
+  function update() {
+    stiffVal.textContent = stiffRange.value;
+    dampVal.textContent  = dampRange.value;
+    massVal.textContent  = (Number(massRange.value) / 10).toFixed(1);
+    drawCurve(-1);
+  }
+
+  [stiffRange, dampRange, massRange].forEach(r => r.addEventListener('input', update));
+
+  const vzIo = new IntersectionObserver(e => {
+    if (e[0].isIntersecting) { drawCurve(-1); vzIo.disconnect(); }
+  }, {threshold:.3});
+  vzIo.observe(canvas);
+}
+
+// ════════════════════════════════════════════════════════════════
+// 08. SEQUENCE / CHOREOGRAPHY
+// ════════════════════════════════════════════════════════════════
+{
+  const els = {
+    header:  document.getElementById('ch-header'),
+    nav:     document.getElementById('ch-nav'),
+    stats:   document.getElementById('ch-stats'),
+    chart:   document.getElementById('ch-chart'),
+    b1:      document.getElementById('ch-b1'),
+    b2:      document.getElementById('ch-b2'),
+    b3:      document.getElementById('ch-b3'),
+    footer:  document.getElementById('ch-footer-row'),
+    bar:     document.getElementById('ch-footer'),
+  };
+
+  function resetChoreo() {
+    Object.values(els).forEach(el => {
+      if (!el) return;
+      cc(el);
+      el.style.opacity = '0';
+      el.style.transform = '';
+    });
+  }
+
+  function runChoreo() {
+    resetChoreo();
+    const stiff = springs.stiff;
+    const gentle = springs.gentle;
+    const bouncy = springs.bouncy;
+
+    // Stagger the stats children
+    const statBars = [...els.stats.querySelectorAll('.choreo-row-bar')];
+
+    setTimeout(() => wa(els.header, tf([{y:-12,o:0},{y:0,o:1}]), {duration:400,...stiff}), 0);
+    setTimeout(() => wa(els.nav,    tf([{x:-16,o:0},{x:0,o:1}]), {duration:360,...stiff}), 200);
+    setTimeout(() => {
+      statBars.forEach((b,i) => setTimeout(() =>
+        wa(b.parentElement || els.stats, tf([{y:10,o:0},{y:0,o:1}]), {duration:320,...stiff})
+      , i*60));
+      wa(els.stats, [{opacity:0},{opacity:1}], {duration:320,...gentle});
+    }, 420);
+    setTimeout(() => wa(els.chart,  tf([{y:14,o:0},{y:0,o:1}]), {duration:380,...gentle}), 640);
+    setTimeout(() => {
+      [els.b1,els.b2,els.b3].forEach((b,i) => setTimeout(() =>
+        wa(b, tf([{s:.85,o:0},{s:1,o:1}]), {duration:300,...bouncy})
+      , i*90));
+    }, 860);
+    setTimeout(() => wa(els.footer, tf([{y:8,o:0},{y:0,o:1}]), {duration:300,...gentle}), 1160);
+    setTimeout(() => wa(els.bar,    [{opacity:0},{opacity:1}], {duration:280,...gentle}), 1380);
+  }
+
+  document.getElementById('choreo-replay').addEventListener('click', runChoreo);
+
+  const chIo = new IntersectionObserver(e => {
+    if (e[0].isIntersecting) { setTimeout(runChoreo, 400); chIo.disconnect(); }
+  }, {threshold:.3});
+  chIo.observe(document.getElementById('choreo-section'));
+}
+</script>
+</body>
+</html>

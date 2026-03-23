@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jump</title>
+<link href="https://fonts.googleapis.com/css2?family=Tiny5&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── NOISE ── */
+#noise-canvas{
+  position:fixed;inset:0;z-index:999;
+  pointer-events:none;
+  opacity:.025;
+  width:100%;height:100%;
+}
+
+:root{
+  --bg:#0f0f0f;
+  --fg:#f0f0f0;
+  --dim:#888;       /* was #666 — legible on dark bg */
+  --dim2:#555;      /* truly secondary, used sparingly */
+  --border:#2a2a2a;
+  --border2:#383838; /* slightly brighter border for hover states */
+  --fn-display:'Tiny5','JetBrains Mono',monospace;
+  --fn-body:'Inter',system-ui,sans-serif;
+  --fn-mono:'JetBrains Mono','Tiny5',monospace;
+}
+
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--fn-display);
+  -webkit-font-smoothing:antialiased;
+  font-size:16px;
+  line-height:1.7;
+}
+
+/* ── SINGLE COLUMN ── */
+.wrap{
+  max-width:960px;
+  margin:0 auto;
+  padding:0 48px 160px;
+}
+
+/* ── NAV ── */
+nav{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:28px 48px;
+  max-width:960px;
+  margin:0 auto;
+}
+nav a{
+  color:var(--dim);
+  text-decoration:none;
+  font-size:14px;
+  letter-spacing:.04em;
+  transition:color .15s;
+}
+nav a:hover{color:var(--fg);}
+nav .nav-r{display:flex;gap:28px;}
+
+/* ── HERO ── */
+.hero{
+  padding:72px 0 64px;
+  text-align:center;
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+}
+/* SVG JUMP title — Tiny5 pixel paths with stroke, drawn in on load */
+.jump-svg{
+  display:block;
+  width:min(82vw, 780px);
+  margin:0 auto 36px;
+  overflow:visible;
+}
+.jump-svg path{
+  fill:none;
+  stroke:var(--fg);
+  stroke-width:1;
+  stroke-linejoin:round;
+}
+.hero-sub{
+  font-family:var(--fn-body);
+  font-size:18px;
+  font-weight:400;
+  color:var(--dim);
+  line-height:1.65;
+}
+.hero-sub em{color:var(--fg);font-style:normal;font-weight:500;}
+.hero-links{
+  display:flex;
+  gap:24px;
+  justify-content:center;
+  margin-top:24px;
+}
+.hero-links a{
+  font-size:15px;
+  color:var(--fg);
+  text-decoration:none;
+  border-bottom:1px solid var(--border);
+  padding-bottom:1px;
+  letter-spacing:.05em;
+  transition:border-color .15s;
+}
+.hero-links a:hover{border-color:var(--fg);}
+
+/* ── INSTALL ── */
+.install{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:36px 0 0;
+  justify-content:center;
+  font-size:15px;
+  color:var(--dim);
+  letter-spacing:.02em;
+}
+.install code{color:var(--fg);}
+.install .prompt{color:var(--dim);}
+
+/* ── DIVIDER ── */
+hr{
+  border:none;
+  border-top:1px solid var(--border);
+  margin:56px 0;
+}
+
+/* ── BODY TEXT — Inter for readability ── */
+p{
+  font-family:var(--fn-body);
+  font-size:17px;
+  font-weight:400;
+  line-height:1.75;
+  color:var(--dim);
+  margin-bottom:22px;
+}
+p em{color:var(--fg);font-style:normal;font-weight:500;}
+p code{
+  font-family:var(--fn-mono);
+  font-size:15px;
+  color:var(--fg);
+  font-weight:400;
+}
+p a{color:var(--fg);text-decoration:none;border-bottom:1px solid var(--border);}
+p a:hover{border-color:var(--fg);}
+
+/* ── SECTION HEADER ── */
+.sh{
+  font-size:13px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--dim);
+  margin-bottom:24px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.sh::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ── INTENT DEMO ── */
+.intent-demo{
+  border:1px solid var(--border);
+  padding:48px 32px 40px;
+  margin-bottom:32px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:32px;
+  position:relative;
+}
+.demo-target{
+  width:64px;height:64px;
+  border:1px solid var(--fg);
+  display:flex;align-items:center;justify-content:center;
+}
+.demo-label{
+  font-size:13px;color:var(--dim);letter-spacing:.04em;position:absolute;top:14px;left:20px;
+}
+.demo-active{
+  font-size:13px;color:var(--fg);letter-spacing:.04em;position:absolute;top:14px;right:20px;
+}
+
+/* ── PILLS ── */
+.pill-group-label{
+  font-size:12px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--dim);
+  margin:24px 0 10px;
+}
+.pill-group-label:first-of-type{ margin-top:0; }
+.pills{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-start;
+  margin-bottom:4px;
+}
+.pill{
+  font-family:var(--fn-display);
+  font-size:14px;
+  padding:9px 17px;
+  border:1px solid var(--border);
+  color:var(--dim);
+  cursor:pointer;
+  transition:all .12s;
+  letter-spacing:.03em;
+  background:none;
+}
+.pill:hover{border-color:var(--border2);color:var(--fg);}
+.pill.on{border-color:var(--fg);color:var(--fg);}
+
+/* ── CODE BLOCK ── */
+.code{
+  background:#080808;
+  border:1px solid var(--border);
+  padding:28px 32px;
+  font-family:var(--fn-mono);
+  font-size:15px;
+  line-height:1.8;
+  color:#686878;        /* base: punctuation / identifiers — readable */
+  overflow-x:auto;
+  margin-bottom:40px;
+  font-weight:400;
+  font-synthesis:none;
+}
+.code .kw{color:#9f7dce;font-weight:400;}  /* purple — keywords */
+.code .fn{color:#6699cc;font-weight:400;}  /* blue — function names */
+.code .st{color:#5aaa72;font-weight:400;}  /* green — strings */
+.code .nu{color:#b07840;font-weight:400;}  /* amber — numbers */
+.code .cm{color:#444454;font-weight:400;font-style:normal;}  /* dark but visible comments */
+
+/* ── SPRING DEMO ── */
+.spring-demo{
+  border:1px solid var(--border);
+  padding:48px 40px;
+  display:flex;
+  gap:36px;
+  align-items:flex-end;
+  margin-bottom:8px;
+}
+.sp-col{display:flex;flex-direction:column;align-items:center;gap:10px;flex:1;}
+.sp-ball{
+  border:1px solid var(--fg);
+  cursor:pointer;transition:border-color .12s;
+  flex-shrink:0;
+}
+.sp-ball:hover{border-color:#888;}
+.sp-nm{font-size:13px;color:var(--dim);letter-spacing:.04em;text-align:center;}
+
+/* ── STAGGER DEMO ── */
+.stag-demo{
+  border:1px solid var(--border);
+  padding:40px 36px 32px;
+  margin-bottom:8px;
+}
+.stag-grid{
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  gap:10px;
+  margin-bottom:28px;
+}
+.sg{width:100%;aspect-ratio:1;border:1px solid var(--border);}
+
+/* ── SEQ DEMO ── */
+.seq-demo{
+  border:1px solid var(--border);
+  padding:36px 32px;
+  margin-bottom:8px;
+}
+.seq-row{
+  height:56px;
+  border:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;
+  font-family:var(--fn-mono);font-size:14px;letter-spacing:.03em;margin-bottom:10px;
+}
+
+/* ── SVG DEMO ── */
+.svg-demo{
+  border:1px solid var(--border);
+  padding:52px 40px;
+  display:flex;flex-direction:column;align-items:center;gap:32px;
+  margin-bottom:8px;
+}
+.svg-tracks{
+  display:flex;gap:48px;align-items:center;justify-content:center;flex-wrap:wrap;
+}
+.svg-track{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.svg-track-lbl{
+  font-size:13px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;
+}
+
+/* ── GESTURE DEMO ── */
+.gest-demo{
+  border:1px solid var(--border);
+  padding:52px 40px;
+  display:flex;gap:48px;align-items:center;justify-content:center;
+  margin-bottom:8px;
+}
+.g-target{
+  width:92px;height:92px;border:1px solid var(--fg);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;cursor:pointer;letter-spacing:.04em;
+  flex-direction:column;gap:4px;
+}
+.g-target-lbl{
+  font-size:12px;color:var(--dim);letter-spacing:.03em;margin-top:10px;text-align:center;line-height:1.5;
+}
+
+/* ── LAYOUT DEMO ── */
+.lay-demo{
+  border:1px solid var(--border);
+  padding:40px 36px;
+  margin-bottom:8px;
+}
+.lay-stage{
+  min-height:200px;
+  margin-bottom:28px;
+  position:relative;
+}
+/* Grid view */
+.lay-grid-view{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+/* List view */
+.lay-list-view{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.lay-block{
+  border:1px solid var(--border);
+  display:flex;align-items:center;
+  font-size:11px;letter-spacing:.04em;color:var(--dim);
+  flex-shrink:0;overflow:hidden;
+  transition:border-color .15s;
+  font-family:var(--fn-display);
+}
+.lay-block-letter{
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-family:var(--fn-display);color:var(--dim);
+  flex-shrink:0;
+  border-right:1px solid var(--border);
+}
+.lay-block-meta{
+  font-family:var(--fn-body);
+  font-size:14px;color:var(--dim);
+  padding:0 16px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.lay-block:hover{border-color:var(--dim);}
+.lay-controls{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.lay-view-toggle{
+  display:flex;border:1px solid var(--border);margin-left:auto;
+}
+.lay-view-btn{
+  font-family:var(--fn-display);font-size:10px;padding:5px 12px;
+  background:none;border:none;color:var(--dim);cursor:pointer;
+  letter-spacing:.05em;transition:all .13s;
+}
+.lay-view-btn.active{color:var(--fg);background:var(--border);}
+.lay-view-btn:first-child{border-right:1px solid var(--border);}
+.lay-hint{font-family:var(--fn-body);font-size:12px;color:var(--dim);}
+
+/* ── STATS ── */
+.stats{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border:1px solid var(--border);
+  margin-bottom:48px;
+}
+.stat{
+  padding:28px 20px;
+  border-right:1px solid var(--border);
+  text-align:center;
+}
+.stat:last-child{border-right:none;}
+.stat-n{font-size:24px;color:var(--fg);letter-spacing:-.02em;}
+.stat-l{font-size:13px;color:var(--dim);letter-spacing:.04em;margin-top:6px;}
+
+/* ── REPLAY BUTTON ── */
+.rbtn{
+  font-family:var(--fn-display);
+  font-size:14px;
+  padding:10px 22px;
+  border:1px solid var(--border);
+  color:var(--dim);
+  cursor:pointer;
+  background:none;
+  transition:all .13s;
+  letter-spacing:.05em;
+}
+.rbtn:hover{border-color:var(--border2);color:var(--fg);}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);
+  padding:56px 0 0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  gap:24px;
+}
+.footer-cta{
+  font-family:var(--fn-display);
+  font-size:15px;
+  letter-spacing:.06em;
+  color:var(--fg);
+  text-transform:uppercase;
+}
+.footer-sub{
+  font-family:var(--fn-body);
+  font-size:17px;
+  color:var(--dim);
+  line-height:1.65;
+}
+.footer-links{
+  display:flex;
+  gap:24px;
+  align-items:center;
+}
+.footer-links a{
+  font-family:var(--fn-display);
+  font-size:14px;
+  color:var(--dim);
+  text-decoration:none;
+  letter-spacing:.06em;
+  border-bottom:1px solid transparent;
+  padding-bottom:1px;
+  transition:all .13s;
+}
+.footer-links a:hover{color:var(--fg);border-color:var(--dim);}
+.footer-bottom{
+  font-family:var(--fn-display);
+  font-size:13px;
+  color:var(--dim2);
+  letter-spacing:.06em;
+  padding-bottom:32px;
+}
+
+@media(max-width:600px){
+  .wrap,.nav-r{gap:16px;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .stat:nth-child(2){border-right:none;}
+  .stat:nth-child(3){border-right:1px solid var(--border);}
+  .gest-demo{flex-direction:column;}
+  nav{padding:20px 24px;}
+  .wrap{padding:0 20px 80px;}
+}
+</style>
+</head>
+<body>
+
+<canvas id="noise-canvas" aria-hidden="true"></canvas>
+<nav>
+  <a href="index.html" style="font-size:15px;letter-spacing:.06em;color:var(--fg);text-decoration:none;">JUMP</a>
+  <div class="nav-r">
+    <a href="showcase.html">showcase</a>
+    <a href="playground.html">playground</a>
+    <a href="https://github.com/ygwyg/jump">github →</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <!-- SVG JUMP — Tiny5 pixel font, split per letter, stroke drawn in on load -->
+    <svg class="jump-svg" id="jump-svg" viewBox="0 0 286 76" xmlns="http://www.w3.org/2000/svg">
+      <path id="jl-j" d="M30.5 60.5H30V61H30.5V60.5ZM30.5 0.5V0H30V0.5H30.5ZM45.5 0.5H46V0H45.5V0.5ZM45.5 60.5V61H46V60.5H45.5ZM0.5 60.5H0V61H0.5V60.5ZM0.5 45.5V45H0V45.5H0.5ZM15.5 45.5H16V45H15.5V45.5ZM15.5 60.5V61H16V60.5H15.5ZM15.5 60.5V60H15V60.5H15.5ZM30.5 60.5H31V60H30.5V60.5ZM30.5 75.5V76H31V75.5H30.5ZM15.5 75.5H15V76H15.5V75.5ZM30.5 60.5H31V0.5H30.5H30V60.5H30.5ZM30.5 0.5V1H45.5V0.5V0H30.5V0.5ZM45.5 0.5H45V60.5H45.5H46V0.5H45.5ZM45.5 60.5V60H30.5V60.5V61H45.5V60.5ZM0.5 60.5H1V45.5H0.5H0V60.5H0.5ZM0.5 45.5V46H15.5V45.5V45H0.5V45.5ZM15.5 45.5H15V60.5H15.5H16V45.5H15.5ZM15.5 60.5V60H0.5V60.5V61H15.5V60.5ZM15.5 60.5V61H30.5V60.5V60H15.5V60.5ZM30.5 60.5H30V75.5H30.5H31V60.5H30.5ZM30.5 75.5V75H15.5V75.5V76H30.5V75.5ZM15.5 75.5H16V60.5H15.5H15V75.5H15.5ZM60.5 60.5H60V61H60.5V60.5ZM60.5 0.5V0H60V0.5H60.5ZM60.5 60.5H61V0.5H60.5H60V60.5H60.5ZM60.5 0.5V1H75.5V0.5V0H60.5V0.5Z"/>
+      <path id="jl-u" d="M75.5 60.5V61H76V60.5H75.5ZM75.5 0.5H76V0H75.5V0.5ZM120.5 60.5V61H121V60.5H120.5ZM105.5 60.5H105V61H105.5V60.5ZM105.5 0.5V0H105V0.5H105.5ZM120.5 0.5H121V0H120.5V0.5ZM105.5 60.5H106V60H105.5V60.5ZM105.5 75.5V76H106V75.5H105.5ZM75.5 75.5H75V76H75.5V75.5ZM75.5 60.5V60H75V60.5H75.5ZM75.5 60.5V60H60.5V60.5V61H75.5V60.5ZM75.5 0.5H75V60.5H75.5H76V0.5H75.5ZM120.5 60.5V60H105.5V60.5V61H120.5V60.5ZM105.5 60.5H106V0.5H105.5H105V60.5H105.5ZM105.5 0.5V1H120.5V0.5V0H105.5V0.5ZM120.5 0.5H120V60.5H120.5H121V0.5H120.5ZM105.5 60.5H105V75.5H105.5H106V60.5H105.5ZM105.5 75.5V75H75.5V75.5V76H105.5V75.5ZM75.5 75.5H76V60.5H75.5H75V75.5H75.5ZM75.5 60.5V61H105.5V60.5V60H75.5V60.5ZM135.5 75.5H135V76H135.5V75.5ZM135.5 0.5V0H135V0.5H135.5ZM135.5 75.5H136V0.5H135.5H135V75.5H135.5ZM135.5 0.5V1H150.5V0.5V0H135.5V0.5Z"/>
+      <path id="jl-m" d="M150.5 75.5V76H151V75.5H150.5ZM150.5 0.5H151V0H150.5V0.5ZM150.5 15.5H150V16H150.5V15.5ZM165.5 15.5H166V15H165.5V15.5ZM165.5 30.5V31H166V30.5H165.5ZM150.5 30.5V30H150V30.5H150.5ZM210.5 75.5V76H211V75.5H210.5ZM195.5 75.5H195V76H195.5V75.5ZM195.5 30.5H196V30H195.5V30.5ZM180.5 30.5H180V31H180.5V30.5ZM180.5 15.5V15H180V15.5H180.5ZM195.5 15.5V16H196V15.5H195.5ZM195.5 0.5V0H195V0.5H195.5ZM210.5 0.5H211V0H210.5V0.5ZM165.5 45.5H165V46H165.5V45.5ZM165.5 30.5V30H165V30.5H165.5ZM180.5 30.5H181V30H180.5V30.5ZM180.5 45.5V46H181V45.5H180.5ZM150.5 75.5V75H135.5V75.5V76H150.5V75.5ZM150.5 0.5H150V15.5H150.5H151V0.5H150.5ZM150.5 15.5V16H165.5V15.5V15H150.5V15.5ZM165.5 15.5H165V30.5H165.5H166V15.5H165.5ZM165.5 30.5V30H150.5V30.5V31H165.5V30.5ZM150.5 30.5H150V75.5H150.5H151V30.5H150.5ZM210.5 75.5V75H195.5V75.5V76H210.5V75.5ZM195.5 75.5H196V30.5H195.5H195V75.5H195.5ZM195.5 30.5V30H180.5V30.5V31H195.5V30.5ZM180.5 30.5H181V15.5H180.5H180V30.5H180.5ZM180.5 15.5V16H195.5V15.5V15H180.5V15.5ZM195.5 15.5H196V0.5H195.5H195V15.5H195.5ZM195.5 0.5V1H210.5V0.5V0H195.5V0.5ZM210.5 0.5H210V75.5H210.5H211V0.5H210.5ZM165.5 45.5H166V30.5H165.5H165V45.5H165.5ZM165.5 30.5V31H180.5V30.5V30H165.5V30.5ZM180.5 30.5H180V45.5H180.5H181V30.5H180.5ZM180.5 45.5V45H165.5V45.5V46H180.5V45.5Z"/>
+      <path id="jl-p" d="M240.5 75.5V76H241V75.5H240.5ZM225.5 75.5H225V76H225.5V75.5ZM225.5 0.5V0H225V0.5H225.5ZM270.5 0.5H271V0H270.5V0.5ZM270.5 15.5V16H271V15.5H270.5ZM240.5 15.5V15H240V15.5H240.5ZM240.5 30.5H240V31H240.5V30.5ZM270.5 30.5H271V30H270.5V30.5ZM270.5 45.5V46H271V45.5H270.5ZM240.5 45.5V45H240V45.5H240.5ZM270.5 30.5H270V31H270.5V30.5ZM270.5 15.5V15H270V15.5H270.5ZM285.5 15.5H286V15H285.5V15.5ZM285.5 30.5V31H286V30.5H285.5ZM240.5 75.5V75H225.5V75.5V76H240.5V75.5ZM225.5 75.5H226V0.5H225.5H225V75.5H225.5ZM225.5 0.5V1H270.5V0.5V0H225.5V0.5ZM270.5 0.5H270V15.5H270.5H271V0.5H270.5ZM270.5 15.5V15H240.5V15.5V16H270.5V15.5ZM240.5 15.5H240V30.5H240.5H241V15.5H240.5ZM240.5 30.5V31H270.5V30.5V30H240.5V30.5ZM270.5 30.5H270V45.5H270.5H271V30.5H270.5ZM270.5 45.5V45H240.5V45.5V46H270.5V45.5ZM240.5 45.5H240V75.5H240.5H241V45.5H240.5ZM270.5 30.5H271V15.5H270.5H270V30.5H270.5ZM270.5 15.5V16H285.5V15.5V15H270.5V15.5ZM285.5 15.5H285V30.5H285.5H286V15.5H285.5ZM285.5 30.5V30H270.5V30.5V31H285.5V30.5Z"/>
+    </svg>
+    <p class="hero-sub">
+      <em>AI-first animation.</em> Intent-driven, WAAPI-native, zero dependencies.<br>
+      The library built for the age of AI-generated UI.
+    </p>
+    <div class="hero-links">
+      <a href="https://github.com/ygwyg/jump">get started</a>
+      <a href="showcase.html">see demos</a>
+    </div>
+    <div class="install">
+      <span class="prompt">$</span>
+      <code>git clone https://github.com/ygwyg/jump</code>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- STATS -->
+  <div class="stats" id="stats-row">
+    <div class="stat"><div class="stat-n">~12KB</div><div class="stat-l">gzipped</div></div>
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">dependencies</div></div>
+    <div class="stat"><div class="stat-n">30+</div><div class="stat-l">intents</div></div>
+    <div class="stat"><div class="stat-n">WAAPI</div><div class="stat-l">engine</div></div>
+  </div>
+
+  <!-- INTENT -->
+  <div class="sh" id="intents">intent api</div>
+
+  <p>
+    Describe what you want in plain English.
+    <em>jump(el, "fade in slide up")</em> — Jump resolves the keyframes, easing,
+    and timing automatically. An AI generates this correctly on the first try.
+    Combine any two intents with a space for compound animations.
+  </p>
+
+  <div class="intent-demo">
+    <span class="demo-label">intent demo</span>
+    <span class="demo-active" id="demo-active">"fade in"</span>
+    <div class="demo-target" id="demo-box"></div>
+  </div>
+
+  <div class="pill-group-label">entrances</div>
+  <div class="pills" id="pills-enter"></div>
+  <div class="pill-group-label">exits</div>
+  <div class="pills" id="pills-exit"></div>
+  <div class="pill-group-label">emphasis</div>
+  <div class="pills" id="pills-emph"></div>
+  <div class="pill-group-label">compound</div>
+  <div class="pills" id="pills-comp"></div>
+
+  <div class="code">
+<span class="cm">// intent strings — AI writes these correctly, first try</span>
+<span class="fn">jump</span>(el, <span class="st">"fade in"</span>)
+<span class="fn">jump</span>(el, <span class="st">"enter from bottom"</span>)
+<span class="fn">jump</span>(el, <span class="st">"fade in slide up"</span>)      <span class="cm">// compound</span>
+<span class="fn">jump</span>(el, <span class="st">"fade out exit bottom"</span>)   <span class="cm">// compound exit</span>
+<span class="fn">jump</span>(el, <span class="st">"pop"</span>, springs.<span class="fn">bouncy</span>)  <span class="cm">// + spring</span></div>
+
+  <hr>
+
+  <!-- SPRINGS -->
+  <div class="sh" id="springs">spring physics</div>
+
+  <p>
+    Jump solves the damped harmonic oscillator and encodes the result as a CSS
+    <em>linear()</em> easing — real physics running on the compositor thread,
+    not a JS animation loop. Click any ball to feel the spring.
+  </p>
+
+  <div class="spring-demo">
+    <div class="sp-col"><div class="sp-ball" id="sb-gentle" style="width:22px;height:22px;"></div><div class="sp-nm">gentle</div></div>
+    <div class="sp-col"><div class="sp-ball" id="sb-default" style="width:30px;height:30px;"></div><div class="sp-nm">default</div></div>
+    <div class="sp-col"><div class="sp-ball" id="sb-bouncy"  style="width:44px;height:44px;"></div><div class="sp-nm">bouncy</div></div>
+    <div class="sp-col"><div class="sp-ball" id="sb-stiff"   style="width:26px;height:26px;"></div><div class="sp-nm">stiff</div></div>
+    <div class="sp-col"><div class="sp-ball" id="sb-wobbly"  style="width:36px;height:36px;"></div><div class="sp-nm">wobbly</div></div>
+  </div>
+
+  <div class="code">
+<span class="cm">// presets — property getters, not function calls</span>
+<span class="fn">jump</span>(el, <span class="st">"enter"</span>, springs.<span class="fn">bouncy</span>)   <span class="cm">// real overshoot</span>
+<span class="fn">jump</span>(el, <span class="st">"enter"</span>, springs.<span class="fn">wobbly</span>)   <span class="cm">// oscillates</span>
+
+<span class="cm">// or custom physics</span>
+<span class="kw">const</span> s = <span class="fn">createSpring</span>({ stiffness: <span class="nu">200</span>, damping: <span class="nu">18</span> })
+<span class="fn">jump</span>(el, <span class="st">"enter from bottom"</span>, s)</div>
+
+  <hr>
+
+  <!-- STAGGER -->
+  <div class="sh" id="stagger">stagger</div>
+
+  <p>
+    Pass any selector, array, or NodeList. Add a stagger value.
+    Each element gets a calculated delay offset — no loops needed.
+    Grid ripple from center, eased distribution, all built in.
+  </p>
+
+  <div class="stag-demo">
+    <div class="stag-grid" id="stag-grid"></div>
+    <button class="rbtn" id="stag-go">replay →</button>
+  </div>
+
+  <div class="code">
+<span class="cm">// grid ripple from center</span>
+<span class="fn">jump</span>(<span class="st">".dot"</span>, <span class="st">"enter from bottom"</span>, {
+  stagger: <span class="fn">stagger</span>(<span class="nu">40</span>, { grid: [<span class="nu">8</span>, <span class="nu">4</span>], from: <span class="st">"center"</span> })
+})</div>
+
+  <hr>
+
+  <!-- SEQUENCE -->
+  <div class="sh">sequence</div>
+
+  <p>
+    <em>jump.sequence()</em> queues steps in order. <em>jump.parallel()</em> fires them all at once.
+    Both return controls with play, pause, seek, and a <em>finished</em> promise.
+  </p>
+
+  <div class="seq-demo">
+    <div class="seq-row" id="sq1">header</div>
+    <div class="seq-row" id="sq2">content block</div>
+    <div class="seq-row" id="sq3" style="width:fit-content">badge ✓</div>
+    <div class="seq-row" id="sq4">footer</div>
+  </div>
+
+  <div class="code">
+<span class="fn">jump</span>.<span class="fn">sequence</span>([
+  [header,  <span class="st">"enter from top"</span>  ],
+  [content, <span class="st">"enter from left"</span> ],
+  [badge,   <span class="st">"pop"</span>             ],
+  [footer,  <span class="st">"fade in slide up"</span>],
+], { overlap: <span class="nu">80</span> })
+
+<span class="cm">// parallel fires all steps at once</span>
+<span class="fn">jump</span>.<span class="fn">parallel</span>(steps)
+
+<span class="cm">// both return controls</span>
+ctrl.<span class="fn">pause</span>() · ctrl.<span class="fn">seek</span>(<span class="nu">0.5</span>) · <span class="kw">await</span> ctrl.<span class="fn">finished</span></div>
+
+  <button class="rbtn" id="sq-go" style="margin-bottom:8px">run sequence →</button>
+
+  <hr>
+
+  <!-- GESTURES -->
+  <div class="sh">gestures</div>
+
+  <p>
+    Touch-safe hover, keyboard-accessible press, drag with momentum and spring
+    snap-back. Each attaches in one line and cleans up on <em>stop()</em>.
+  </p>
+
+  <div class="code" style="margin-bottom:16px;">
+<span class="fn">jump</span>.<span class="fn">hover</span>(el, {
+  onEnter: el => <span class="fn">jump</span>.<span class="fn">to</span>(el, { scale: <span class="nu">1.06</span> }, springs.<span class="fn">stiff</span>),
+  onLeave: el => <span class="fn">jump</span>.<span class="fn">to</span>(el, { scale: <span class="nu">1</span>    }, springs.<span class="fn">gentle</span>)
+})
+
+<span class="fn">jump</span>.<span class="fn">drag</span>(el, { bounds: { left: <span class="nu">-80</span>, right: <span class="nu">80</span> } })</div>
+
+  <div class="gest-demo">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <div class="g-target" id="gh">hover</div>
+      <div class="g-target-lbl">touch-safe<br>pointer events</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <div class="g-target" id="gp">press</div>
+      <div class="g-target-lbl">keyboard<br>accessible</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <div class="g-target" id="gd" style="cursor:grab;">drag</div>
+      <div class="g-target-lbl">momentum<br>+ snap-back</div>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- SVG -->
+  <div class="sh">svg drawing</div>
+
+  <p>
+    Line drawing with spring easing by default. Works on any SVG path, circle,
+    polyline — anything with <em>getTotalLength()</em>.
+  </p>
+
+  <div class="code" style="margin-bottom:16px;">
+<span class="fn">jump</span>.svg.<span class="fn">drawIn</span>(path)         <span class="cm">// 0% → 100%</span>
+<span class="fn">jump</span>.svg.<span class="fn">draw</span>(path, <span class="nu">0.2</span>, <span class="nu">0.8</span>) <span class="cm">// partial</span>
+<span class="fn">jump</span>.svg.<span class="fn">drawOut</span>(path)        <span class="cm">// erase</span></div>
+
+  <div class="svg-demo">
+    <!-- Track 1: circle + check (visible by default) -->
+    <div class="svg-track" id="svt-0">
+      <svg width="140" height="140" viewBox="0 0 100 100" fill="none">
+        <circle id="sv-c" cx="50" cy="50" r="42" stroke="var(--fg)" stroke-width="1.5" fill="none"/>
+        <path id="sv-k" d="M 28 50 L 43 67 L 72 33" stroke="var(--fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <div class="svg-track-lbl">circle + check</div>
+    </div>
+    <!-- Track 2: rect + guides (hidden) -->
+    <div class="svg-track" id="svt-1" style="display:none">
+      <svg width="140" height="140" viewBox="0 0 100 100" fill="none">
+        <rect id="sv-r" x="10" y="28" width="80" height="44" rx="6" stroke="var(--fg)" stroke-width="1.5" fill="none"/>
+        <line id="sv-l1" x1="10" y1="50" x2="90" y2="50" stroke="var(--fg)" stroke-width="1" stroke-dasharray="3 3"/>
+        <line id="sv-l2" x1="50" y1="28" x2="50" y2="72" stroke="var(--fg)" stroke-width="1" stroke-dasharray="3 3"/>
+      </svg>
+      <div class="svg-track-lbl">rect + guides</div>
+    </div>
+    <!-- Track 3: wave (hidden) -->
+    <div class="svg-track" id="svt-2" style="display:none">
+      <svg width="140" height="140" viewBox="0 0 100 100" fill="none">
+        <path id="sv-w" d="M 10 70 C 25 30, 40 30, 50 50 C 60 70, 75 70, 90 30" stroke="var(--fg)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path id="sv-w2" d="M 10 50 C 25 10, 40 10, 50 50 C 60 90, 75 90, 90 50" stroke="var(--fg)" stroke-width="1" stroke-linecap="round" fill="none" opacity=".4"/>
+      </svg>
+      <div class="svg-track-lbl">wave</div>
+    </div>
+    <button class="rbtn" id="sv-go">draw → next</button>
+  </div>
+
+  <hr>
+
+  <!-- LAYOUT -->
+  <div class="sh">layout / flip</div>
+
+  <p>
+    Capture before, mutate, flip after. Every element glides to its new position.
+    Shared element transitions with a single string ID — thumbnail to modal, tab indicators, reorder.
+  </p>
+
+  <div class="code">
+<span class="cm">// manual FLIP</span>
+<span class="kw">const</span> snap = <span class="fn">jump</span>.<span class="fn">capture</span>(el)
+doTheDOMChange()
+<span class="fn">jump</span>.<span class="fn">flip</span>(el, snap, { style: <span class="st">"spring"</span> })
+
+<span class="cm">// shared element transition</span>
+<span class="fn">jump</span>.<span class="fn">snapshot</span>(thumb, <span class="st">"hero"</span>)
+showModal()
+<span class="fn">jump</span>.<span class="fn">shared</span>(heroEl, <span class="st">"hero"</span>)</div>
+
+  <!-- LAYOUT DEMO -->
+  <div class="lay-demo" id="lay-demo">
+    <div class="lay-stage">
+      <div class="lay-list-view" id="lay-grid-live"></div>
+    </div>
+    <div class="lay-controls">
+      <button class="rbtn" id="lay-shuffle">shuffle →</button>
+      <button class="rbtn" id="lay-sort">sort ←</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- REACT -->
+  <div class="sh">react</div>
+
+  <p>
+    React bindings included. Tree-shakeable, SSR-safe,
+    React 18 + 19. Every intent, as hooks and declarative components.
+  </p>
+
+  <div class="code">
+<span class="cm">// hook — trigger: mount, visible, manual</span>
+<span class="kw">const</span> { ref } = <span class="fn">useJump</span>(<span class="st">"fade in slide up"</span>)
+<span class="kw">const</span> { ref } = <span class="fn">useJump</span>(<span class="st">"enter from bottom"</span>, { trigger: <span class="st">"visible"</span> })
+
+<span class="cm">// exit animations on unmount</span>
+&lt;<span class="fn">Presence</span> show={open} enter=<span class="st">"fade in slide up"</span> exit=<span class="st">"fade out"</span>&gt;
+  &lt;<span class="fn">Dialog</span> /&gt;
+&lt;/<span class="fn">Presence</span>&gt;
+
+<span class="cm">// shared element transition</span>
+&lt;<span class="fn">Layout</span> sharedId=<span class="st">"card"</span> style=<span class="st">"bouncy"</span>&gt;
+  &lt;<span class="fn">img</span> src={thumb} /&gt;
+&lt;/<span class="fn">Layout</span>&gt;
+
+<span class="cm">// drag-to-reorder</span>
+&lt;<span class="fn">Reorder</span> values={items} onReorder={setItems}&gt;
+  {items.<span class="fn">map</span>(item =&gt; (
+    &lt;<span class="fn">Reorder.Item</span> value={item}&gt;{item}&lt;/<span class="fn">Reorder.Item</span>&gt;
+  ))}
+&lt;/<span class="fn">Reorder</span>&gt;</div>
+
+  <hr>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-cta">ready to animate?</div>
+    <p class="footer-sub">
+      Jump is open source, zero dependencies, and works with any framework.<br>
+      Intent-driven, WAAPI-native, built for the age of AI-generated UI.
+    </p>
+    <div class="footer-links">
+      <a href="https://github.com/ygwyg/jump">github →</a>
+      <a href="showcase.html">showcase →</a>
+      <a href="playground.html">playground →</a>
+    </div>
+    <div class="footer-bottom">© 2026 — MIT license</div>
+  </footer>
+
+</div><!-- /wrap -->
+
+<script>
+// ── NOISE — sparse random grain, very subtle ─────────────────────
+(function(){
+  const canvas = document.getElementById('noise-canvas');
+  if (!canvas) return;
+
+  function generate() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(canvas.width, canvas.height);
+    const data = img.data;
+    // Sparse: only ~20% of pixels get a white dot, rest are transparent.
+    // This gives a faint sprinkle of grain rather than solid static.
+    let seed = 0xdeadbeef;
+    function rand() {
+      seed ^= seed << 13; seed ^= seed >> 17; seed ^= seed << 5;
+      return (seed >>> 0) / 0xffffffff;
+    }
+    for (let i = 0; i < data.length; i += 4) {
+      const r = rand();
+      if (r < 0.18) {
+        // Sparse white dot — varying brightness
+        const v = (r / 0.18 * 255) | 0;
+        data[i] = data[i+1] = data[i+2] = v;
+        data[i+3] = 255;
+      }
+      // else: transparent (alpha stays 0)
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  generate();
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(generate, 200); });
+})();
+</script>
+
+<script type="module">
+// ─── JUMP inlined (spring physics + animation engine) ─────────────
+function sPos(t,w,z,v0){if(z<1){const d=w*Math.sqrt(1-z*z),B=(z*w+v0)/d;return 1-Math.exp(-z*w*t)*(Math.cos(d*t)+B*Math.sin(d*t))}if(z===1)return 1-Math.exp(-w*t)*(1+(w+v0)*t);const r1=-w*(z-Math.sqrt(z*z-1)),r2=-w*(z+Math.sqrt(z*z-1)),c2=(r1+v0)/(r1-r2);return 1-((1-c2)*Math.exp(r1*t)+c2*Math.exp(r2*t))}
+function fS(w,z,v0){let hi=.5;while(Math.abs(sPos(hi,w,z,v0)-1)>.0001){hi*=2;if(hi>60)return 10}let lo=0;for(let i=0;i<48;i++){const m=(lo+hi)/2;Math.abs(sPos(m,w,z,v0)-1)>.0001?lo=m:hi=m}return hi}
+function sd2(px,py,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,l=dx*dx+dy*dy;if(!l)return Math.hypot(px-x1,py-y1);const t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l));return Math.hypot(px-(x1+t*dx),py-(y1+t*dy))}
+function rdp(pts,s,e,eps,k){if(e-s<=1)return;let mx=0,mi=s;const[x1,y1]=pts[s],[x2,y2]=pts[e];for(let i=s+1;i<e;i++){const d=sd2(...pts[i],x1,y1,x2,y2);if(d>mx){mx=d;mi=i}}if(mx>eps){k[mi]=1;rdp(pts,s,mi,eps,k);rdp(pts,mi,e,eps,k)}}
+function mkSp({stiffness:s=170,damping:d=26,mass:m=1,velocity:v=0}={}){
+  if(s<=0||m<=0)return{easing:'ease-out',duration:300};
+  const w=Math.sqrt(s/m),z=d/(2*Math.sqrt(s*m));
+  const dur=fS(w,z,v),N=Math.min(Math.max(120,Math.ceil(w*dur/Math.PI*12)),400);
+  const sa=Array.from({length:N+1},(_,i)=>Math.max(-3,Math.min(3,sPos(i/N*dur,w,z,v))));
+  const pts=sa.map((v2,i)=>[i/N,v2]);const k=new Uint8Array(N+1);k[0]=k[N]=1;rdp(pts,0,N,.0004,k);
+  return{easing:`linear(${sa.map((v2,i)=>{if(!k[i])return null;const p=Math.round(i/N*1000)/10,vv=Math.round(v2*1e5)/1e5;return i===0||i===N?`${vv}`:`${vv} ${p}%`}).filter(Boolean).join(',')})`,duration:Math.round(dur*1e3)};
+}
+const springs={get bouncy(){return mkSp({stiffness:300,damping:20})},get gentle(){return mkSp({stiffness:120,damping:14})},get stiff(){return mkSp({stiffness:500,damping:40})},get default(){return mkSp({stiffness:170,damping:26})},get wobbly(){return mkSp({stiffness:180,damping:8})}};
+
+function cc(el){el.getAnimations().filter(a=>a.__j).forEach(a=>{try{a.commitStyles()}catch{};a.cancel()})}
+function wa(el,kfs,opt){cc(el);const a=el.animate(kfs,{fill:'forwards',...opt});a.__j=true;a.finished.then(()=>{try{a.commitStyles()}catch{};a.cancel()}).catch(()=>{});return a;}
+function tf(fs){return fs.map(f=>{const r={},t=[];if(f.x!=null)t.push(`translateX(${f.x}px)`);if(f.y!=null)t.push(`translateY(${f.y}px)`);if(f.s!=null)t.push(`scale(${f.s})`);if(f.r!=null)t.push(`rotate(${f.r}deg)`);if(f.sx!=null)t.push(`scaleX(${f.sx})`);if(f.sy!=null)t.push(`scaleY(${f.sy})`);if(t.length)r.transform=t.join(' ');if(f.o!=null)r.opacity=f.o;if(f.at!=null)r.offset=f.at;return r})}
+
+const EM={eo:'cubic-bezier(0.215,0.61,0.355,1)',ei:'cubic-bezier(0.55,0.055,0.675,0.19)',sp:'cubic-bezier(0.2,1.2,0.4,1)'};
+const IM={'fade in':()=>({k:[{opacity:0},{opacity:1}],e:EM.eo}),'fade out':()=>({k:[{opacity:1},{opacity:0}],e:EM.ei}),'enter':()=>({k:tf([{s:.95,o:0},{s:1,o:1}]),e:EM.eo}),'enter from bottom':o=>({k:tf([{y:o.distance??18,o:0},{y:0,o:1}]),e:EM.eo}),'enter from top':o=>({k:tf([{y:-(o.distance??18),o:0},{y:0,o:1}]),e:EM.eo}),'enter from left':o=>({k:tf([{x:-(o.distance??18),o:0},{x:0,o:1}]),e:EM.eo}),'enter from right':o=>({k:tf([{x:o.distance??18,o:0},{x:0,o:1}]),e:EM.eo}),'exit':()=>({k:tf([{s:1,o:1},{s:.95,o:0}]),e:EM.ei}),'fade in slide up':o=>({k:tf([{y:o.distance??14,o:0},{y:0,o:1}]),e:EM.eo}),'slide up':o=>({k:tf([{y:o.distance??16},{y:0}]),e:EM.eo}),'grow':()=>({k:tf([{s:.04,o:0},{s:1,o:1}]),e:EM.sp}),'shrink':()=>({k:tf([{s:1,o:1},{s:.04,o:0}]),e:EM.ei}),'pop':()=>({k:tf([{s:1},{s:1.28,at:.38},{s:.88,at:.68},{s:1}]),e:EM.sp}),'bounce':()=>({k:tf([{},{y:-22,at:.3},{y:0,at:.5},{y:-9,at:.68},{y:0}]),e:EM.sp}),'shake':()=>({k:tf([{x:0},{x:-12,at:.15},{x:12,at:.3},{x:-8,at:.45},{x:8,at:.6},{x:-4,at:.78},{x:0}]),e:'ease-in-out'}),'wiggle':()=>({k:tf([{r:0},{r:-10,at:.2},{r:10,at:.4},{r:-7,at:.6},{r:7,at:.8},{r:0}]),e:'ease-in-out'}),'spin':()=>({k:tf([{r:0},{r:360}]),e:'cubic-bezier(.4,0,.2,1)'}),'emphasize':()=>({k:tf([{s:1},{s:1.18,at:.5},{s:1}]),e:EM.sp}),'pulse':()=>({k:[{opacity:1},{opacity:.06,offset:.5},{opacity:1}],e:'ease-in-out'}),'flip y':()=>({k:[{transform:'perspective(600px) rotateY(0)'},{transform:'perspective(600px) rotateY(360deg)'}],e:'ease-in-out'}),'wobble':()=>({k:tf([{s:1},{s:1.1,at:.15},{s:.92,at:.3},{s:1.06,at:.5},{s:.97,at:.7},{s:1}]),e:'ease-in-out'}),'tada':()=>({k:tf([{s:1,r:0},{s:.9,r:-3,at:.1},{s:1.14,r:3,at:.28},{s:1.14,r:-3,at:.44},{s:1.14,r:3,at:.58},{s:1.14,r:-3,at:.72},{s:1,r:0}]),e:'ease-in-out'}),'jello':()=>({k:tf([{sx:1,sy:1},{sx:1.4,sy:.6,at:.14},{sx:.76,sy:1.24,at:.28},{sx:1.14,sy:.86,at:.42},{sx:.94,sy:1.06,at:.58},{sx:1.03,sy:.97,at:.74},{sx:1,sy:1}]),e:'ease-in-out'})};
+const IS=Object.keys(IM).sort((a,b)=>b.length-a.length);
+function resI(str,opts){if(IM[str])return IM[str](opts);const parts=[];let rem=str.trim();while(rem.length){let hit=false;for(const k of IS){if(rem.startsWith(k)&&(rem[k.length]===' '||!rem[k.length])){parts.push(k);rem=rem.slice(k.length).trim();hit=true;break;}}if(!hit){const s=rem.indexOf(' ');if(s<0)break;rem=rem.slice(s+1).trim();}}if(!parts.length)return{k:[{opacity:0},{opacity:1}],e:EM.eo};const from={},to={};for(const p of parts){const r=IM[p](opts);if(r.k.length===2){Object.assign(from,r.k[0]);Object.assign(to,r.k[1])}else return r;}return{k:[from,to],e:EM.eo};}
+function jump(target,anim,opts={}){let els=typeof target==='string'?[...document.querySelectorAll(target)]:target instanceof Element?[target]:Array.isArray(target)?target:[...target];if(!els.length)return{finished:Promise.resolve(),animations:[],cancel(){}};const stg=opts.stagger??0,stgFn=typeof stg==='function'?stg:i=>i*stg;const all=[];for(let i=0;i<els.length;i++){const el=els[i],delay=(opts.delay??0)+stgFn(i,els.length);let kfs,ease;if(typeof anim==='string'){const r=resI(anim,opts);kfs=r.k;ease=r.e;}else if(Array.isArray(anim)){kfs=tf(anim);ease=opts.easing??'ease-in-out';}else{kfs=tf([{},anim]);ease=opts.easing??'ease-in-out';}const a=el.animate(kfs,{duration:opts.duration??300,delay,easing:opts.easing??ease,fill:'forwards',iterations:opts.iterations??1});a.__j=true;a.finished.then(()=>{try{a.commitStyles()}catch{};a.cancel()}).catch(()=>{});all.push(a);}const fin=Promise.all(all.map(a=>a.finished)).then(()=>opts.onComplete?.()).catch(()=>{});return{finished:fin,animations:all,cancel(){all.forEach(a=>a.cancel())}};}
+jump.sequence=(steps,opts={})=>{const all=[];let chain=Promise.resolve();const ov=opts.overlap??0;steps.forEach((step,i)=>{chain=chain.then(()=>new Promise(res=>{const[t,a,o={}]=step;const c=jump(t,a,o);all.push(...c.animations);if(ov>0&&i<steps.length-1)setTimeout(res,Math.max(0,(o.duration??300)-ov));else c.finished.then(res).catch(res)}))});return{finished:chain,animations:all};};
+
+function svgDraw(el,from,to,opts={}){if(typeof el.getTotalLength!=='function')return;const len=el.getTotalLength();el.style.strokeDasharray=len;const s=mkSp({stiffness:200,damping:28});const a=el.animate([{strokeDashoffset:len*(1-from)},{strokeDashoffset:len*(1-to)}],{duration:opts.duration??s.duration,easing:opts.easing??s.easing,fill:'forwards',delay:opts.delay??0});a.__j=true;a.finished.then(()=>{try{a.commitStyles()}catch{};a.cancel()}).catch(()=>{});}
+
+// ─── HERO entrance ────────────────────────────────────────────────
+jump('#hero-title','fade in',{duration:600,delay:100});
+
+// ─── INTENT PLAYGROUND ───────────────────────────────────────────
+// ── Intent pills — all intents, organized by group ────────────────
+const PILL_GROUPS = {
+  enter: [
+    'fade in','enter','enter from top','enter from bottom',
+    'enter from left','enter from right','slide up','grow',
+  ],
+  exit: [
+    'fade out','exit','shrink',
+  ],
+  emphasis: [
+    'pop','bounce','shake','wiggle','spin','emphasize',
+    'pulse','wobble','flip y','tada','jello',
+  ],
+  compound: [
+    'fade in slide up','fade in enter from bottom',
+    'fade out exit bottom','fade in enter from left',
+  ],
+};
+
+let aP = null;
+
+function makePills(containerId, intents) {
+  const container = document.getElementById(containerId);
+  intents.forEach(intent => {
+    const b = document.createElement('button');
+    b.className = 'pill';
+    b.textContent = intent;
+    b.addEventListener('click', () => {
+      if (aP) aP.classList.remove('on');
+      b.classList.add('on');
+      aP = b;
+      document.getElementById('demo-active').textContent = `"${intent}"`;
+      const sp = ['bounce','pop','grow','wobble','tada','jello'].some(k => intent.includes(k))
+        ? springs.bouncy : springs.default;
+      jump('#demo-box', intent, {duration:500, distance:22, ...sp});
+    });
+    container.appendChild(b);
+  });
+}
+
+makePills('pills-enter', PILL_GROUPS.enter);
+makePills('pills-exit',  PILL_GROUPS.exit);
+makePills('pills-emph',  PILL_GROUPS.emphasis);
+makePills('pills-comp',  PILL_GROUPS.compound);
+
+// Auto-cycle through all pills until user clicks one
+const ALL_PILLS = Object.values(PILL_GROUPS).flat();
+let ci = 0;
+function autoI() {
+  if (aP) return;
+  // Click the pill programmatically by finding it
+  const allPills = [...document.querySelectorAll('.pill')];
+  const target = allPills[ci % allPills.length];
+  if (target) target.click();
+  ci++;
+  setTimeout(autoI, 2000);
+}
+setTimeout(autoI, 800);
+
+// ─── SPRINGS ──────────────────────────────────────────────────────
+const spMap={gentle:{stiffness:120,damping:14},default:{stiffness:170,damping:26},bouncy:{stiffness:300,damping:20},stiff:{stiffness:500,damping:40},wobbly:{stiffness:180,damping:8}};
+Object.entries(spMap).forEach(([name,cfg])=>{
+  const ball=document.getElementById(`sb-${name}`);
+  if(!ball)return;
+  ball.addEventListener('click',()=>{const s=mkSp(cfg);wa(ball,tf([{s:.25,o:.1},{s:1,o:1}]),{duration:s.duration,easing:s.easing});});
+});
+
+// ─── STAGGER ──────────────────────────────────────────────────────
+const sgEl=document.getElementById('stag-grid');
+for(let i=0;i<32;i++){const d=document.createElement('div');d.className='sg';sgEl.appendChild(d);}
+function runStag(){
+  const dots=[...sgEl.querySelectorAll('.sg')];
+  dots.forEach(d=>{cc(d);d.style.opacity='0';d.style.borderColor='#333';});
+  const cols=8,rows=4,cx=(cols-1)/2,cy=(rows-1)/2;
+  dots.forEach((d,i)=>{
+    const col=i%cols,row=Math.floor(i/cols);
+    const dist=Math.sqrt((col-cx)**2+(row-cy)**2);
+    const maxD=Math.sqrt(cx*cx+cy*cy)||1;
+    const delay=(dist/maxD)*280;
+    setTimeout(()=>{
+      jump(d,'enter from bottom',{duration:380,distance:10,...springs.bouncy});
+      setTimeout(()=>d.style.borderColor='#f0f0f0',delay+100);
+    },delay);
+  });
+}
+document.getElementById('stag-go').addEventListener('click',runStag);
+const sgIo=new IntersectionObserver(e=>{if(e[0].isIntersecting){runStag();sgIo.disconnect();}},{threshold:.4});
+sgIo.observe(sgEl);
+
+// ─── SEQUENCE ─────────────────────────────────────────────────────
+function runSeq(){
+  const els=['sq1','sq2','sq3','sq4'].map(id=>document.getElementById(id));
+  els.forEach(e=>{cc(e);e.style.opacity='0';e.style.transform='none';});
+  jump.sequence([[els[0],'enter from top',{duration:320,...springs.stiff}],[els[1],'enter from left',{duration:300,...springs.stiff}],[els[2],'pop',{duration:340,...springs.bouncy}],[els[3],'fade in slide up',{duration:300,...springs.gentle}]],{overlap:40});
+}
+document.getElementById('sq-go').addEventListener('click',runSeq);
+const sqIo=new IntersectionObserver(e=>{if(e[0].isIntersecting){setTimeout(runSeq,200);sqIo.disconnect();}},{threshold:.4});
+sqIo.observe(document.getElementById('sq1'));
+
+// ─── GESTURES ─────────────────────────────────────────────────────
+const gh=document.getElementById('gh');
+gh.addEventListener('mouseenter',()=>{wa(gh,tf([{s:1},{s:1.08}]),{duration:180,...springs.stiff});gh.textContent='✦';});
+gh.addEventListener('mouseleave',()=>{wa(gh,tf([{s:1.08},{s:1}]),{duration:260,...springs.gentle});gh.textContent='hover';});
+const gp=document.getElementById('gp');
+let gpd=false;
+function gPress(){if(gpd)return;gpd=true;wa(gp,tf([{s:1},{s:.9}]),{duration:100,...springs.stiff});}
+function gRel(){if(!gpd)return;gpd=false;wa(gp,tf([{s:.9},{s:1}]),{duration:220,...springs.bouncy});}
+gp.addEventListener('pointerdown',gPress);['pointerup','pointercancel'].forEach(e=>gp.addEventListener(e,gRel));
+gp.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter')gPress();});
+gp.addEventListener('keyup',gRel);
+const gd=document.getElementById('gd');
+let dr=false,ox=0,cx2=0;
+gd.addEventListener('pointerdown',e=>{dr=true;gd.setPointerCapture(e.pointerId);ox=e.clientX-cx2;});
+gd.addEventListener('pointermove',e=>{if(!dr)return;cx2=Math.max(-80,Math.min(80,e.clientX-ox));gd.style.transform=`translateX(${cx2}px)`;});
+gd.addEventListener('pointerup',()=>{if(!dr)return;dr=false;const s=springs.bouncy;const cur=gd.style.transform;cc(gd);gd.style.transform=cur;wa(gd,[{transform:cur},{transform:'translateX(0)'}],{duration:s.duration,easing:s.easing});cx2=0;});
+
+// ─── SVG ──────────────────────────────────────────────────────────
+// All SVG element IDs across the three tracks
+// SVG demo — one track at a time, cycles on each click
+const SVG_TRACKS = [
+  // track index → elements to draw
+  [{id:'sv-c', dur:700, delay:0}, {id:'sv-k', dur:500, delay:500}],
+  [{id:'sv-r', dur:700, delay:0}, {id:'sv-l1', dur:400, delay:480}, {id:'sv-l2', dur:400, delay:680}],
+  [{id:'sv-w', dur:800, delay:0}, {id:'sv-w2', dur:700, delay:350}],
+];
+let svgIdx = 0;
+
+function resetTrack(idx) {
+  SVG_TRACKS[idx].forEach(({id}) => {
+    const el = document.getElementById(id);
+    if (!el || typeof el.getTotalLength !== 'function') return;
+    const l = el.getTotalLength();
+    el.style.strokeDasharray  = l;
+    el.style.strokeDashoffset = l;
+  });
+}
+
+function drawTrack(idx) {
+  SVG_TRACKS[idx].forEach(({id, dur, delay}) => {
+    svgDraw(document.getElementById(id), 0, 1, {duration: dur, delay});
+  });
+}
+
+function showTrack(idx, animate) {
+  // Hide all, show target
+  for (let i = 0; i < SVG_TRACKS.length; i++) {
+    const t = document.getElementById(`svt-${i}`);
+    if (t) t.style.display = i === idx ? 'flex' : 'none';
+  }
+  resetTrack(idx);
+  if (animate) setTimeout(() => drawTrack(idx), 40);
+}
+
+document.getElementById('sv-go').addEventListener('click', () => {
+  svgIdx = (svgIdx + 1) % SVG_TRACKS.length;
+  showTrack(svgIdx, true);
+  // Update button label to show what's next
+  const labels = ['circle + check', 'rect + guides', 'wave'];
+  const next = (svgIdx + 1) % SVG_TRACKS.length;
+  document.getElementById('sv-go').textContent = `next: ${labels[next]} →`;
+});
+
+// Initial draw on scroll into view
+const svgIo = new IntersectionObserver(e => {
+  if (e[0].isIntersecting) {
+    showTrack(0, true);
+    svgIo.disconnect();
+  }
+}, {threshold:.4});
+svgIo.observe(document.querySelector('.svg-demo'));
+
+// ─── SVG JUMP HERO — stroke draw-in per letter ───────────────────
+(function(){
+  const ids = ['jl-j','jl-u','jl-m','jl-p'];
+  const letters = ids.map(id => document.getElementById(id));
+  const {easing, duration} = mkSp({stiffness:180, damping:24});
+
+  letters.forEach((el, i) => {
+    if (!el || typeof el.getTotalLength !== 'function') return;
+    const len = el.getTotalLength();
+    // Set up dasharray to total length — dashoffset starts at len (hidden)
+    el.style.strokeDasharray  = len;
+    el.style.strokeDashoffset = len;
+
+    const delay = i * 130 + 100;
+    const a = el.animate(
+      [{strokeDashoffset: len}, {strokeDashoffset: 0}],
+      {duration, easing, delay, fill: 'forwards'}
+    );
+    a.__j = true;
+    a.finished.then(() => { try{a.commitStyles()}catch{}; a.cancel(); }).catch(()=>{});
+  });
+})();
+
+// ─── LAYOUT / FLIP DEMO ───────────────────────────────────────────
+(function(){
+  const container = document.getElementById('lay-grid-live');
+  if (!container) return;
+
+  const ITEMS = [
+    {letter:'A', label:'Intent animations',  sub:'fade in, bounce, pop, shake…'},
+    {letter:'B', label:'Spring physics',     sub:'createSpring({ stiffness, damping })'},
+    {letter:'C', label:'Layout / FLIP',      sub:'capture → mutate → flip'},
+    {letter:'D', label:'Gestures',           sub:'hover, press, drag + snap'},
+    {letter:'E', label:'Stagger',            sub:'grid ripple from center'},
+    {letter:'F', label:'Sequence',           sub:'jump.sequence(steps, { overlap })'},
+    {letter:'G', label:'SVG drawing',        sub:'jump.svg.drawIn(path)'},
+    {letter:'H', label:'Scroll-driven',      sub:'ViewTimeline + IntersectionObserver'},
+  ];
+
+  const blocks = [];
+
+  ITEMS.forEach((item, i) => {
+    const el = document.createElement('div');
+    el.className = 'lay-block';
+    el.dataset.idx = i;
+    el.style.height = '64px';
+
+    const letterEl = document.createElement('div');
+    letterEl.className = 'lay-block-letter';
+    letterEl.style.cssText = 'width:64px;height:64px;';
+    letterEl.textContent = item.letter;
+
+    const inner = document.createElement('div');
+    inner.style.cssText = 'display:flex;flex-direction:column;justify-content:center;padding:0 18px;gap:2px;';
+
+    const nameEl = document.createElement('div');
+    nameEl.style.cssText = 'font-family:var(--fn-body);font-size:15px;font-weight:500;color:var(--fg);line-height:1.2;';
+    nameEl.textContent = item.label;
+
+    const subEl = document.createElement('div');
+    subEl.className = 'lay-block-meta';
+    subEl.style.cssText = 'font-family:var(--fn-mono);font-size:12px;color:var(--dim);padding:0;line-height:1.3;';
+    subEl.textContent = item.sub;
+
+    inner.appendChild(nameEl);
+    inner.appendChild(subEl);
+    el.appendChild(letterEl);
+    el.appendChild(inner);
+    container.appendChild(el);
+    blocks.push({el, i});
+  });
+
+  function capAll() {
+    return blocks.map(({el}) => ({el, rect: el.getBoundingClientRect()}));
+  }
+
+  function flipAll(snaps) {
+    const {easing:fe, duration:fd} = mkSp({stiffness:280, damping:28});
+    snaps.forEach(({el, rect:from}) => {
+      const to = el.getBoundingClientRect();
+      const dx = from.left - to.left, dy = from.top - to.top;
+      if (Math.abs(dx)<.5 && Math.abs(dy)<.5) return;
+      cc(el);
+      const a = el.animate([
+        {transform:`translate(${dx}px,${dy}px)`, transformOrigin:'top left'},
+        {transform:'none',                        transformOrigin:'top left'},
+      ], {duration:fd, easing:fe, fill:'forwards'});
+      a.__j = true;
+      a.finished.then(()=>{try{a.commitStyles()}catch{};a.cancel();}).catch(()=>{});
+    });
+  }
+
+  document.getElementById('lay-shuffle').addEventListener('click', () => {
+    const snaps = capAll();
+    [...blocks].sort(() => Math.random() - .5).forEach(({el}) => container.appendChild(el));
+    requestAnimationFrame(() => flipAll(snaps));
+  });
+
+  document.getElementById('lay-sort').addEventListener('click', () => {
+    const snaps = capAll();
+    [...blocks].sort((a,b) => a.i - b.i).forEach(({el}) => container.appendChild(el));
+    requestAnimationFrame(() => flipAll(snaps));
+  });
+
+  // Entrance
+  const io = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) return;
+    blocks.forEach(({el}) => { el.style.opacity = '0'; });
+    jump(blocks.map(b => b.el), 'enter from bottom', {
+      stagger:50, duration:320, distance:10, ...springs.stiff,
+    });
+    io.disconnect();
+  }, {threshold:.3});
+  io.observe(container);
+})();
+
+// ─── SCROLL-TRIGGERED ENTRANCES ───────────────────────────────────
+const sIo=new IntersectionObserver(e=>{if(!e[0].isIntersecting)return;jump([...document.querySelectorAll('.stat')],'enter from bottom',{stagger:60,duration:320,distance:10,...springs.stiff});sIo.disconnect();},{threshold:.5});
+document.querySelectorAll('.stat').forEach(s=>s.style.opacity='0');
+sIo.observe(document.getElementById('stats-row'));
+</script>
+</body>
+</html>

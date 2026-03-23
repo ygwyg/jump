@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.local
+.wrangler/
+
+# Cloudflare Workers — never commit these
+wrangler.toml
+worker.js
+.dev.vars
+*.env
+.env*
